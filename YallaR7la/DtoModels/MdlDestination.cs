@@ -20,8 +20,7 @@ namespace YallaR7la.DtoModels
         public int AvilableNumber { get; set; }
         
 
-        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5.")]
-        public int? Rating { get; set; }
+        
         
         [Required(ErrorMessage = "Start date is Required.")]
         [DataType(DataType.Date)]
@@ -29,11 +28,11 @@ namespace YallaR7la.DtoModels
         [Required(ErrorMessage = "End date is Required.")]
         [DataType(DataType.Date)]
         public DateTime EndtDate { get; set; }
-        public bool IsAvelable { get; set; }
+       
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Cost { get; set; }
         public decimal Discount { get; set; } = 0;
-        public string BusinessOwnerId { get; set; }
+        
     }
 }

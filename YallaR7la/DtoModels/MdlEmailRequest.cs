@@ -2,10 +2,12 @@
 
 namespace YallaR7la.DtoModels
 {
-    public class MdlFavorite
+    public class MdlEmailRequest
     {
+        [Required]
+        public string ToEmail { get; set; }
         
         
-        public string DestinationId { get; set; }
+        
     }
 }

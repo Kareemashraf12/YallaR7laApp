@@ -17,12 +17,12 @@ namespace YallaR7la.DtoModels
         public string City { get; set; }
         [Required(ErrorMessage = "Number is Required")]
         [RegularExpression(@"^(\+201|01|00201)[0-2,5]{1}[0-9]{8}", ErrorMessage = "Invalid phone number format.")]
-
+        
         public string PhoneNumper { get; set; }
         public DateTime BirthDate { get; set; }
 
         public IFormFile ImageData { get; set; }
-        public Guid UniqueIdImage { get; set; }
+      
 
     }
 }

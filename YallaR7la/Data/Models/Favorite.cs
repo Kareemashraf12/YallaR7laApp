@@ -7,10 +7,10 @@ namespace YallaR7la.Data.Models
     {
  
         [Key] 
-        public string FavoriteId { get; set; }
+        public string FavoriteId { get; set; } = Guid.NewGuid().ToString();
 
         [Required] 
-        public DateTime FavoritedAt { get; set; } = DateTime.UtcNow;
+        public DateTime FavoritedAt { get; set; } 
 
         // relations
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
+using YallaR7la.Data.Models.YallaR7la.Data.Models;
 
 namespace YallaR7la.Data.Models
 {
@@ -29,12 +30,14 @@ namespace YallaR7la.Data.Models
             }
         }
 
+        //public string UserRole { get; set; } // User - Owner - Admin
         public byte[] ImageData { get; set; }
-        public Guid UniqueIdImage { get; set; }
+        public Guid UniqueIdImage = Guid.NewGuid();
 
         //relations 
         public virtual ICollection<Feedback> Feedbacks { get; set; }
         public virtual ICollection<Favorite> Favorites { get; set; }
+
 
     }
 }

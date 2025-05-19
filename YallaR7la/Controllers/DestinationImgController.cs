@@ -64,63 +64,63 @@ namespace YallaR7la.Controllers
 
 
 
-        #region Get All Comments
+        //#region Get All Comments
 
-        [HttpGet("GetAllComments/{destinationId}")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetAllComments (string destinationId)
-        {
-            var destinationComments = await _appDbContext.Feedbacks.Where(f => f.DestinationId == destinationId).ToListAsync();           
-            if (string.IsNullOrWhiteSpace(destinationId) ||  destinationComments.Count == 0)
-            {
-                return BadRequest("DestinationId is required.");
-            }
+        //[HttpGet("GetAllComments/{destinationId}")]
+        //[AllowAnonymous]
+        //public async Task<IActionResult> GetAllComments (string destinationId)
+        //{
+        //    var destinationComments = await _appDbContext.Feedbacks.Where(f => f.DestinationId == destinationId).ToListAsync();           
+        //    if (string.IsNullOrWhiteSpace(destinationId) ||  destinationComments.Count == 0)
+        //    {
+        //        return BadRequest("DestinationId is required.");
+        //    }
             
 
-            if (destinationComments == null || destinationComments.Count == 0)
-            {
-                return NotFound("No comments found for this destination.");
-            }
-            return Ok(destinationComments);
-        }
+        //    if (destinationComments == null || destinationComments.Count == 0)
+        //    {
+        //        return NotFound("No comments found for this destination.");
+        //    }
+        //    return Ok(destinationComments);
+        //}
 
-        #endregion
+        //#endregion
 
-        #region Add To Favorites
+        //#region Add To Favorites
 
-        [HttpPost("AddToFavorites/{destinationId}")]
-        [Authorize] // Ensure only authenticated users can access 
-        public async Task<IActionResult> AddToFavorites(string destinationId)
-        {
+        //[HttpPost("AddToFavorites/{destinationId}")]
+        //[Authorize] // Ensure only authenticated users can access 
+        //public async Task<IActionResult> AddToFavorites(string destinationId)
+        //{
             
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized("User is not authenticated.");
-            }
+        //    string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userId))
+        //    {
+        //        return Unauthorized("User is not authenticated.");
+        //    }
 
-            // Check if the favorite record already exists to avoid duplicates
-            var existingFavorite = await _appDbContext.Favorites
-                .FirstOrDefaultAsync(f => f.UserId == userId && f.DestinationId == destinationId);
-            if (existingFavorite != null)
-            {
-                return BadRequest("This destination is already in your favorites.");
-            }
+        //    // Check if the favorite record already exists to avoid duplicates
+        //    var existingFavorite = await _appDbContext.Favorites
+        //        .FirstOrDefaultAsync(f => f.UserId == userId && f.DestinationId == destinationId);
+        //    if (existingFavorite != null)
+        //    {
+        //        return BadRequest("This destination is already in your favorites.");
+        //    }
 
             
-            var favorite = new Favorite
-            {
-                UserId = userId,
-                DestinationId = destinationId,
+        //    var favorite = new Favorite
+        //    {
+        //        UserId = userId,
+        //        DestinationId = destinationId,
                 
-            };
+        //    };
 
-            await _appDbContext.Favorites.AddAsync(favorite);
-            await _appDbContext.SaveChangesAsync();
+        //    await _appDbContext.Favorites.AddAsync(favorite);
+        //    await _appDbContext.SaveChangesAsync();
 
-            return Ok(favorite);
-        }
+        //    return Ok(favorite);
+        //}
 
-        #endregion
+        //#endregion
     }
 }

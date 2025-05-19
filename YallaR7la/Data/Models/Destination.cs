@@ -6,7 +6,7 @@ namespace YallaR7la.Data.Models
     public class Destination
     {
         [Key]
-        public string DestinationId { get; set; }
+        public string DestinationId { get; set; } = Guid.NewGuid().ToString();
         [Required(ErrorMessage ="Destination name is required")]
         [StringLength(100,ErrorMessage ="destination name can not be more than 100 characters.")]
         public string Name { get; set; }
@@ -35,7 +35,7 @@ namespace YallaR7la.Data.Models
         [Required(ErrorMessage = "End date is Required.")]
         //[DataType(DataType.Date)]
         public DateTime EndtDate { get; set; }
-        public bool IsAvelable { get; set; }
+        public bool IsAvelable { get; set; }=false;
         
         [Column(TypeName ="decimal(18,2)")]
         public decimal Cost { get; set; }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using YallaR7la.Data;
 
@@ -11,9 +12,11 @@ using YallaR7la.Data;
 namespace YallaR7la.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250505173005_EditeTableFeedBack")]
+    partial class EditeTableFeedBack
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,39 +24,6 @@ namespace YallaR7la.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("Feedback", b =>
-                {
-                    b.Property<string>("FeedbackId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("DestinationId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime>("dataSubmited")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("FeedbackId");
-
-                    b.HasIndex("DestinationId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Feedbacks");
-                });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
@@ -262,6 +232,10 @@ namespace YallaR7la.Migrations
                     b.Property<string>("BusinessOwnerId")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("AdminId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -291,15 +265,21 @@ namespace YallaR7la.Migrations
 
                     b.HasKey("BusinessOwnerId");
 
+                    b.HasIndex("AdminId");
+
                     b.ToTable("BusinessOwners");
                 });
 
             modelBuilder.Entity("YallaR7la.Data.Models.Chat", b =>
                 {
-                    b.Property<string>("ChatId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AdminId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -311,7 +291,7 @@ namespace YallaR7la.Migrations
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("ChatId");
+                    b.HasKey("Id");
 
                     b.HasIndex("AdminId");
 
@@ -436,6 +416,36 @@ namespace YallaR7la.Migrations
                     b.ToTable("Favorites");
                 });
 
+            modelBuilder.Entity("YallaR7la.Data.Models.Feedback", b =>
+                {
+                    b.Property<string>("FeedbackId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("DestinationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("dataSubmited")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("FeedbackId");
+
+                    b.HasIndex("DestinationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Feedbacks");
+                });
+
             modelBuilder.Entity("YallaR7la.Data.Models.User", b =>
                 {
                     b.Property<string>("Id")
@@ -527,22 +537,24 @@ namespace YallaR7la.Migrations
 
             modelBuilder.Entity("YallaR7la.Data.Models.YallaR7la.Data.Models.Message", b =>
                 {
-                    b.Property<string>("MessageId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AdminId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("BusinessOwnerId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ChatId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("ChatId")
+                        .HasColumnType("int");
 
                     b.Property<string>("SenderId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("SenderRole")
                         .IsRequired()
@@ -553,41 +565,18 @@ namespace YallaR7la.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UserId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("When")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("MessageId");
-
-                    b.HasIndex("AdminId");
-
-                    b.HasIndex("BusinessOwnerId");
+                    b.HasKey("Id");
 
                     b.HasIndex("ChatId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("SenderId");
 
                     b.ToTable("Message");
-                });
-
-            modelBuilder.Entity("Feedback", b =>
-                {
-                    b.HasOne("YallaR7la.Data.Models.Destination", "Destination")
-                        .WithMany("Feedbacks")
-                        .HasForeignKey("DestinationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("YallaR7la.Data.Models.User", "User")
-                        .WithMany("Feedbacks")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Destination");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -658,12 +647,24 @@ namespace YallaR7la.Migrations
                     b.Navigation("BusinessOwner");
                 });
 
+            modelBuilder.Entity("YallaR7la.Data.Models.BusinessOwner", b =>
+                {
+                    b.HasOne("YallaR7la.Data.Models.Admin", "Admin")
+                        .WithMany("Business")
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+                });
+
             modelBuilder.Entity("YallaR7la.Data.Models.Chat", b =>
                 {
                     b.HasOne("YallaR7la.Data.Models.Admin", "Admin")
                         .WithMany()
                         .HasForeignKey("AdminId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("YallaR7la.Data.Models.BusinessOwner", "Owner")
                         .WithMany()
@@ -723,28 +724,50 @@ namespace YallaR7la.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("YallaR7la.Data.Models.Feedback", b =>
+                {
+                    b.HasOne("YallaR7la.Data.Models.Destination", "Destination")
+                        .WithMany("Feedbacks")
+                        .HasForeignKey("DestinationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("YallaR7la.Data.Models.User", "User")
+                        .WithMany("Feedbacks")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Destination");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("YallaR7la.Data.Models.YallaR7la.Data.Models.Message", b =>
                 {
-                    b.HasOne("YallaR7la.Data.Models.Admin", "Admin")
-                        .WithMany()
-                        .HasForeignKey("AdminId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("YallaR7la.Data.Models.BusinessOwner", "Owner")
-                        .WithMany()
-                        .HasForeignKey("BusinessOwnerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("YallaR7la.Data.Models.Chat", "Chat")
                         .WithMany("Messages")
                         .HasForeignKey("ChatId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("YallaR7la.Data.Models.Admin", "Admin")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("YallaR7la.Data.Models.BusinessOwner", "Owner")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("YallaR7la.Data.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Admin");
 
@@ -758,6 +781,8 @@ namespace YallaR7la.Migrations
             modelBuilder.Entity("YallaR7la.Data.Models.Admin", b =>
                 {
                     b.Navigation("Analytics");
+
+                    b.Navigation("Business");
                 });
 
             modelBuilder.Entity("YallaR7la.Data.Models.BusinessOwner", b =>

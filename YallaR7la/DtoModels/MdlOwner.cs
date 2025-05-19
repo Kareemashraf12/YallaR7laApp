@@ -23,9 +23,9 @@ namespace YallaR7la.DtoModels
         public DateTime TimeAdd { get; set; }
         public IFormFile ImageData { get; set; }
         public Guid UniqueIdImage { get; set; }
-        public string AdminId { get; set; }
+        
 
-     
+        
 
     }
 }

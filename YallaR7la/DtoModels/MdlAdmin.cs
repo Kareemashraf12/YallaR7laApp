@@ -23,8 +23,5 @@ namespace YallaR7la.DtoModels
         //public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         
         public IFormFile ImageData { get; set; }
-
-
-
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using YallaR7la.Data;
 using YallaR7la.Data.Models;
 using YallaR7la.DtoModels;
@@ -18,26 +19,88 @@ namespace YallaR7la.Controllers
         }
 
 
-        #region Get Favorites
-        [HttpGet("GetFavorites")]
-        public async Task<IActionResult> GetFavorites()
+        #region MyFavorites
+
+        [HttpGet("MyFavorites")]
+        public async Task<IActionResult> GetFavoriteDestinations()
         {
-            var favorites = await _appDbContext.Favorites.ToListAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not found in token.");
+
+            var favorites = await _appDbContext.Favorites
+                .Where(f => f.UserId == userId)
+                .Include(f => f.Destination)
+                .Select(f => new
+                {
+                    f.Destination.DestinationId,
+                    f.Destination.Name,
+                    f.Destination.Category,
+                    f.Destination.Description,
+                    f.Destination.AverageRating,
+                    f.FavoritedAt
+                })
+                .ToListAsync();
+
             return Ok(favorites);
         }
-        [HttpPost]
-        public async Task<IActionResult> AddToFavorite(MdlFavorite mdlFavorite)
+
+
+        #endregion
+
+        #region Add To Favorite
+        [HttpPost("AddToFavorite")]
+        public async Task<IActionResult> AddToFavorite([FromBody] MdlFavorite mdlFavorite)
         {
-            var favorite = new Favorite()
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not found in token.");
+
+            // Check if already favorited
+            bool exists = await _appDbContext.Favorites
+                .AnyAsync(f => f.UserId == userId && f.DestinationId == mdlFavorite.DestinationId);
+
+            if (exists)
+                return BadRequest("Destination is already in favorites.");
+
+            var favorite = new Favorite
             {
-                FavoritedAt = DateTime.Now,
-                UserId = mdlFavorite.UserId,
-                DestinationId = mdlFavorite.DestinationId
+                UserId = userId,
+                DestinationId = mdlFavorite.DestinationId,
+                FavoritedAt = DateTime.UtcNow
             };
-            await _appDbContext.AddAsync(favorite);
+
+            await _appDbContext.Favorites.AddAsync(favorite);
             await _appDbContext.SaveChangesAsync();
-            return Ok(favorite);
+
+            return Ok(new { message = "Added to favorites." });
         }
+
+        #endregion
+
+
+        #region Remove from Favorites
+
+        [HttpDelete("RemoveFromFavorite/{destinationId}")]
+        public async Task<IActionResult> RemoveFromFavorite(string destinationId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not found in token.");
+
+            var favorite = await _appDbContext.Favorites
+                .FirstOrDefaultAsync(f => f.UserId == userId && f.DestinationId == destinationId);
+
+            if (favorite == null)
+                return NotFound("Destination not found in your favorites.");
+
+            _appDbContext.Favorites.Remove(favorite);
+            await _appDbContext.SaveChangesAsync();
+
+            return Ok(new { message = "Removed from favorites." });
+        }
+
+
         #endregion
     }
 }

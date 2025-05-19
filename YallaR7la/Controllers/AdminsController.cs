@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
+using Org.BouncyCastle.Crypto.Generators;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -19,51 +20,56 @@ namespace YallaR7la.Controllers
     public class AdminsController : ControllerBase
     {
         private readonly AppDbContext _appDbContext;
-        private readonly UserManager<Admin> _adminManager;
-        private readonly UserManager<BusinessOwner> _ownerManager;
+        //private readonly UserManager<Admin> _adminManager;
+        //private readonly UserManager<BusinessOwner> _ownerManager;
+        //private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
         private readonly IMemoryCache _memoryCache;
-        public AdminsController(AppDbContext appDbContext , UserManager<Admin> adminManager , UserManager<BusinessOwner> ownerManager, IConfiguration configuration , IMemoryCache memoryCache)
+        public AdminsController(AppDbContext appDbContext , IConfiguration configuration , IMemoryCache memoryCache , RoleManager<IdentityRole> roleManager)
         {
             _appDbContext = appDbContext;
-            _adminManager = adminManager;
-            _ownerManager = ownerManager;
+            //_adminManager = adminManager;
+            //_ownerManager = ownerManager;
             _configuration = configuration;
             _memoryCache = memoryCache;
+            //_roleManager = roleManager;
             
         }
 
-        [HttpGet]
 
-        //public  async Task<IActionResult> GetAllAdmins()
-        //{
-        //    var allAdmins = await _appDbContext.Admins.ToListAsync();
-        //    return Ok(allAdmins);
-        //}
 
-        // Get admin with Id 
-        //[HttpGet("GetAdminDetails/{adminId}")]
-        //public async Task<IActionResult> GetAdminDetails(int adminId)
-        //{
-        //    var adminDetails = await _appDbContext.Admins
-        //        .Where(a => a.AdminId == adminId)
-        //        .Select(a => new AdminDto
-        //        {
-        //            Name = a.Name,
-        //            Email = a.Email,
-        //            PhoneNumper = a.PhoneNumper,
-        //            CreatedAt = a.CreatedAt
-        //        })
-        //        .FirstOrDefaultAsync();
+        //------------------------------------------------
+        
+        
 
-        //    if (adminDetails == null)
-        //    {
-        //        return NotFound(new { Message = "Admin not found" });
-        //    }
 
-        //    return Ok(adminDetails);
-        //}
+        #region GetAdminWithId
+
+        [HttpGet("GetAdminWithId/{adminId}")]
+        public async Task<IActionResult> GetAdminWithId(string adminId)
+        {
+            var adminDetails = await _appDbContext.Admins
+                .Where(a => a.AdminId == adminId)
+                .Select(a => new AdminDto
+                {
+                    Name = a.Name,
+                    Email = a.Email,
+                    PhoneNumper = a.PhoneNumper,
+                    CreatedAt = a.CreatedAt
+                })
+                .FirstOrDefaultAsync();
+
+            if (adminDetails == null)
+            {
+                return NotFound(new { Message = "Admin not found" });
+            }
+
+            return Ok(adminDetails);
+        }
         // --------------
+        #endregion
+
+
 
         #region Get All Admin
         [HttpGet("GetAllAdmin")]
@@ -89,7 +95,7 @@ namespace YallaR7la.Controllers
         #endregion
         //-------------------
 
-        #region Get Admin Details
+        #region GetAdminDetails
         [HttpGet("GetAdminDetails/{adminId}")]
         public async Task<IActionResult> GetAdminDetails(string adminId)
         {
@@ -99,67 +105,79 @@ namespace YallaR7la.Controllers
                     }
             return Ok(adminDetails);
         }
-#endregion
+        #endregion
 
 
         #region Add Admin 
-        [HttpPost("AddAdmin")]
-        [AllowAnonymous]
+        //[HttpPost("AddAdmin")]
+        //[AllowAnonymous]
 
-        public async Task<IActionResult> AddAdmin(MdlAdmin mdlAdmin)
-        {
-            //var currrentadmin = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            //if (currrentadmin == null || currrentadmin != adminId)
-            //{
-            //    return Forbid("You do not have access to add admin!");
-            //}
+        //public async Task<IActionResult> AddAdmin(MdlAdmin mdlAdmin)
+        //{
+        //    //var currrentadmin = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    //if (currrentadmin == null || currrentadmin != adminId)
+        //    //{
+        //    //    return Forbid("You do not have access to add admin!");
+        //    //}
 
-            
-            using var stream = new MemoryStream();
-            await mdlAdmin.ImageData.CopyToAsync(stream);
-            var admin = new Admin()
-            {
-                Name = mdlAdmin.Name,
-                Email = mdlAdmin.Email,
-                Password = mdlAdmin.Password,
-                PhoneNumper = mdlAdmin.PhoneNumper,
-                
-                ImageData = stream.ToArray(),
-                UniqeImageId = Guid.NewGuid(),
-            };
 
-            await _appDbContext.AddAsync(admin);
-            await _appDbContext.SaveChangesAsync();
-            return Ok(admin);
+        //    using var stream = new MemoryStream();
+        //    await mdlAdmin.ImageData.CopyToAsync(stream);
+        //    var admin = new Admin()
+        //    {
+        //        Name = mdlAdmin.Name,
+        //        Email = mdlAdmin.Email,
+        //        Password = mdlAdmin.Password,
+        //        PhoneNumper = mdlAdmin.PhoneNumper,
 
-        }
+        //        ImageData = stream.ToArray(),
+        //        UniqeImageId = Guid.NewGuid(),
+        //    };
+
+        //    await _appDbContext.AddAsync(admin);
+        //    await _appDbContext.SaveChangesAsync();
+        //    return Ok(admin);
+
+        //}
 
         #endregion
 
 
-        #region  Forget Password
+        #region  ResetPassword
 
-        [HttpPut]
 
-        public async Task<IActionResult> FoegetPassword(PasswordDto passwordDto)
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("ResetPassword")]
+        public async Task<IActionResult> ResetPassword([FromBody] MdlResetPassword model)
         {
-            var adminEmail = await _appDbContext.Admins.FindAsync(passwordDto.Email);
-            if (adminEmail == null)
+            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(adminId)) return Unauthorized();
+
+            var admin = await _appDbContext.Admins.FindAsync(adminId);
+            if (admin == null) return NotFound("Admin not found!");
+
+            var hasher = new PasswordHasher<Admin>();
+            var result = hasher.VerifyHashedPassword(admin, admin.PasswordHash, model.OldPassword);
+
+            if (result == PasswordVerificationResult.Failed)
+                return Unauthorized("Old password is incorrect!");
+
+            admin.PasswordHash = hasher.HashPassword(admin, model.NewPassword);
+            admin.UpdatedAt = DateTime.UtcNow;
+
+            try
             {
-                return NotFound("Your Email is not found try again!");
+                _appDbContext.Admins.Update(admin);
+                await _appDbContext.SaveChangesAsync();
+                return Ok("Password has been reset successfully.");
             }
-
-            var newAdminpassword = new Admin()
+            catch (Exception ex)
             {
-                Password = passwordDto.Password
-            };
-            return Ok("your password updated!");
-
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
         }
-        
 
-
-        
 
         #endregion
 
@@ -175,7 +193,6 @@ namespace YallaR7la.Controllers
             //{
             //    admin.Name,
             //    admin.Email,
-            //    admin.Password,
             //    admin.ImageData,
             //    admin.PhoneNumper
 
@@ -185,8 +202,8 @@ namespace YallaR7la.Controllers
             {
                 return NotFound(new { Message = "This Admin is not foud!" });
             }
-            else
-                return Ok(adminDetails);
+            //else
+            //    return Ok(adminDetails);
 
             if (mdlAdmin.ImageData != null)
             {
@@ -200,8 +217,8 @@ namespace YallaR7la.Controllers
             }
             admin.Name = mdlAdmin.Name;
             admin.Email = mdlAdmin.Email;
-            admin.Password = mdlAdmin.Password;
-            admin.UpdatedAt = DateTime.Now;
+            
+            
             await _appDbContext.SaveChangesAsync();
             return Ok(new
             {
@@ -222,70 +239,70 @@ namespace YallaR7la.Controllers
 
         //----------------------------------
         #region Update Admin Info3
-        [HttpPut("Update_Admin_Info3/{adminId}")]
-        public async Task<IActionResult> UpdateAdminInfo3(string adminId, [FromForm] MdlAdmin mdlAdmin)
-        {
-            //  Retrieve admin data from the database
-            var admin = await _appDbContext.Admins.FindAsync(adminId);
-            if (admin == null)
-            {
-                return NotFound(new { Message = "This admin was not found!" });
-            }
+        //[HttpPut("Update_Admin_Info3/{adminId}")]
+        //public async Task<IActionResult> UpdateAdminInfo3(string adminId, [FromForm] MdlAdmin mdlAdmin)
+        //{
+        //    //  Retrieve admin data from the database
+        //    var admin = await _appDbContext.Admins.FindAsync(adminId);
+        //    if (admin == null)
+        //    {
+        //        return NotFound(new { Message = "This admin was not found!" });
+        //    }
 
-            //  Send existing data before updating
-            var existingData = new
-            {
-                admin.AdminId,
-                admin.Name,
-                admin.Email,
-                admin.UpdatedAt
-            };
+        //    //  Send existing data before updating
+        //    var existingData = new
+        //    {
+        //        admin.AdminId,
+        //        admin.Name,
+        //        admin.Email,
+        //        admin.UpdatedAt
+        //    };
 
-            //  If no new data is provided, return the existing data
-            if (mdlAdmin.Name == null && mdlAdmin.Email == null && mdlAdmin.Password == null && mdlAdmin.ImageData == null)
-            {
-                return Ok(new
-                {
-                    Message = "Current admin data retrieved successfully!",
-                    ExistingData = existingData
-                });
-            }
-
-            
-            byte[] oldImageData = admin.ImageData;
+        //    //  If no new data is provided, return the existing data
+        //    if (mdlAdmin.Name == null && mdlAdmin.Email == null && mdlAdmin.Password == null && mdlAdmin.ImageData == null)
+        //    {
+        //        return Ok(new
+        //        {
+        //            Message = "Current admin data retrieved successfully!",
+        //            ExistingData = existingData
+        //        });
+        //    }
 
             
-            admin.Name = !string.IsNullOrEmpty(mdlAdmin.Name) ? mdlAdmin.Name : admin.Name;
-            admin.Email = !string.IsNullOrEmpty(mdlAdmin.Email) ? mdlAdmin.Email : admin.Email;
-            admin.Password = !string.IsNullOrEmpty(mdlAdmin.Password) ? mdlAdmin.Password : admin.Password; 
-            if (mdlAdmin.ImageData != null && mdlAdmin.ImageData.Length > 0)
-            {
-                using var stream = new MemoryStream();
-                await mdlAdmin.ImageData.CopyToAsync(stream);
-                admin.ImageData = stream.ToArray();
-            }
-            else
-            {
-                admin.ImageData = oldImageData; 
-            }
+        //    byte[] oldImageData = admin.ImageData;
 
             
-            admin.UpdatedAt = DateTime.Now;
-            await _appDbContext.SaveChangesAsync();
+        //    admin.Name = !string.IsNullOrEmpty(mdlAdmin.Name) ? mdlAdmin.Name : admin.Name;
+        //    admin.Email = !string.IsNullOrEmpty(mdlAdmin.Email) ? mdlAdmin.Email : admin.Email;
+        //    admin.Password = !string.IsNullOrEmpty(mdlAdmin.Password) ? mdlAdmin.Password : admin.Password; 
+        //    if (mdlAdmin.ImageData != null && mdlAdmin.ImageData.Length > 0)
+        //    {
+        //        using var stream = new MemoryStream();
+        //        await mdlAdmin.ImageData.CopyToAsync(stream);
+        //        admin.ImageData = stream.ToArray();
+        //    }
+        //    else
+        //    {
+        //        admin.ImageData = oldImageData; 
+        //    }
+
+            
+        //    admin.UpdatedAt = DateTime.Now;
+        //    await _appDbContext.SaveChangesAsync();
 
            
-            return Ok(new
-            {
-                Message = "Admin data updated successfully!",
-                UpdatedData = new
-                {
-                    admin.AdminId,
-                    admin.Name,
-                    admin.Email,
-                    admin.UpdatedAt
-                }
-            });
-        }
+        //    return Ok(new
+        //    {
+        //        Message = "Admin data updated successfully!",
+        //        UpdatedData = new
+        //        {
+        //            admin.AdminId,
+        //            admin.Name,
+        //            admin.Email,
+        //            admin.UpdatedAt
+        //        }
+        //    });
+        //}
 
         #endregion
 
@@ -311,31 +328,65 @@ namespace YallaR7la.Controllers
 
 
 
-        // add Owners Acount 
-        [HttpPost("AddOnewrsByAdmin")]
-        //public async Task<IActionResult> AddOwner([FromForm] MdlOwner mdlOwner)
-        //{
-        //    using var stream = new MemoryStream();
-        //    await mdlOwner.ImageData.CopyToAsync(stream);
-        //    var owner = new BusinessOwner()
-        //    {
-        //        Name = mdlOwner.Name,
-        //        Email = mdlOwner.Email,
-        //        Password = mdlOwner.Password,
-        //        PhoneNumper = mdlOwner.PhoneNumper,
-        //        Rating = mdlOwner.Rating,
-        //        TimeAdd = DateTime.Now,
-        //        ImageData = stream.ToArray(),
-        //        UniqueIdImage = Guid.NewGuid(),
-        //        AdminId = mdlOwner.AdminId,
+        #region add Owners Acount
+        [HttpPost("AddOwner")]
+        //[Authorize]
+        public async Task<IActionResult> AddOwner([FromForm] MdlOwner mdlOwner)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-        //    };
-        //    await _appDbContext.AddAsync(owner);
-        //    await _appDbContext.SaveChangesAsync();
-        //    return Ok(owner);
+            // Check if the email is founded before
+            bool exists = await _appDbContext.BusinessOwners.AnyAsync(o => o.Email == mdlOwner.Email);
+            if (exists)
+                return Conflict("An owner with this email already exists.");
 
+            // Get the image for owner
+            byte[] imageData = null;
+            if (mdlOwner.ImageData != null && mdlOwner.ImageData.Length > 0)
+            {
+                using var stream = new MemoryStream();
+                await mdlOwner.ImageData.CopyToAsync(stream);
+                imageData = stream.ToArray();
+            }
 
-        //}
+            // Get AdminId from token
+            //var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            
+            //if (string.IsNullOrEmpty(adminId))
+            //    return Unauthorized("Invalid admin token.");
+
+            // Git the New Owner Data
+            var owner = new BusinessOwner
+            {
+                Name = mdlOwner.Name,
+                Email = mdlOwner.Email,
+                PhoneNumper = mdlOwner.PhoneNumper,
+                TimeAdd = DateTime.UtcNow,
+                ImageData = imageData,
+                UniqueIdImage = Guid.NewGuid(),
+                
+            };
+
+            // Hashing password
+            var hasher = new PasswordHasher<BusinessOwner>();
+            owner.PasswordHash = hasher.HashPassword(owner, mdlOwner.Password);
+
+            // Save the New Owner
+            await _appDbContext.BusinessOwners.AddAsync(owner);
+            await _appDbContext.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = "Owner added successfully.",
+                OwnerId = owner.BusinessOwnerId,
+                owner.Name,
+                owner.Email,
+                owner.PhoneNumper
+            });
+        }
+
+        #endregion
 
         // ----------------- Get all Owners -------------------
         #region Get All Owners
@@ -351,50 +402,50 @@ namespace YallaR7la.Controllers
         // Create acount for Owner
         #region Creat Owner Acount
 
-        [HttpPost("CreatOwnerAcount/{adminId}")]
-        [Authorize(policy:"AdminOnly")]
-        public async Task<IActionResult> AddNewOwner(string adminId,[FromForm] MdlOwner newOwner)
-        {
-            if (ModelState.IsValid)
-            {
-                var currrentadmin = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (currrentadmin == null || currrentadmin != adminId)
-                {
-                    return Forbid("You do not have access to add admin!");
-                }
+        //[HttpPost("CreatOwnerAcount")]
+        //[Authorize(policy: "AdminOnly")]
+        //public async Task<IActionResult> AddNewOwner( [FromForm] MdlOwner newOwner)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
 
-                using var stream = new MemoryStream();
-                await newOwner.ImageData.CopyToAsync(stream);
-                var owner = new BusinessOwner()
-                {
-                    Name = newOwner.Name,
-                    Email = newOwner.Email,
-                    Password = newOwner.Password,
-                    PhoneNumper = newOwner.PhoneNumper,
-                    TimeAdd = DateTime.Now,
-                    ImageData = stream.ToArray(),
-                    UniqueIdImage = Guid.NewGuid(),
-                };
+        //    var currentAdminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(currentAdminId))
+        //        return Forbid("You do not have access to add an owner!");
 
+        //    byte[] imageData;
+        //    using (var stream = new MemoryStream())
+        //    {
+        //        await newOwner.ImageData.CopyToAsync(stream);
+        //        imageData = stream.ToArray();
+        //    }
 
-                IdentityResult result = await _ownerManager.CreateAsync(owner, newOwner.Password);
-                if (result.Succeeded)
-                    return Ok("Sucsess");
-                else
-                {
-                    foreach (var item in result.Errors)
-                    {
-                        ModelState.AddModelError("", item.Description);
-                    }
-                }
-            }
-            return BadRequest(ModelState);
-        }
+        //    // Optionally hash password here
+        //    var hashedPassword = BCrypt.Net.BCrypt.HashPassword(newOwner.Password);
+
+        //    var owner = new BusinessOwner
+        //    {
+        //        Name = newOwner.Name,
+        //        Email = newOwner.Email,
+        //        PhoneNumper = newOwner.PhoneNumper,
+        //        TimeAdd = DateTime.Now,
+        //        ImageData = imageData,
+        //        UniqueIdImage = Guid.NewGuid(),
+        //        PasswordHash = hashedPassword, // make sure this column exists
+                
+        //    };
+
+        //    await _appDbContext.BusinessOwners.AddAsync(owner);
+        //    await _appDbContext.SaveChangesAsync();
+
+        //    return Ok("Owner added successfully.");
+        //}
+
         #endregion
         // ----------------- Delete Owner -------------------
         #region Delate Owner
         [HttpDelete("Delate_Owner/{ownerId}")]
-        public async Task<IActionResult> DeleteOwner(int ownerId)
+        public async Task<IActionResult> DeleteOwner(string ownerId)
         {
             var ownerToDelete = await _appDbContext.BusinessOwners.FindAsync(ownerId);
             if (ownerToDelete == null)
@@ -409,46 +460,47 @@ namespace YallaR7la.Controllers
         #endregion
 
         // --------------- Update Owner -------------
-        #region Update Owner Info
-        [HttpPut("Update_Owner_Info/{ownerId}")]
+        #region Update Owner 
+        
+        [HttpPut("UpdateOwner/{ownerId}")]
         public async Task<IActionResult> UpdateOwner(string ownerId, [FromForm] MdlOwner mdlOwner)
         {
-            // Retrieve admin data from the database
-            var owner = await _appDbContext.Admins.FindAsync(ownerId);
+            var owner = await _appDbContext.BusinessOwners.FindAsync(ownerId);
             if (owner == null)
             {
                 return NotFound(new { Message = "This Owner was not found!" });
             }
 
-            // Send existing data before updating
             var existingData = new
             {
-                
                 owner.Name,
                 owner.Email,
-                owner.Password,
                 owner.PhoneNumper
-               
             };
 
-            //  If no new data is provided, return the existing data
             if (mdlOwner.Name == null && mdlOwner.Email == null && mdlOwner.PhoneNumper == null && mdlOwner.Password == null && mdlOwner.ImageData == null)
             {
                 return Ok(new
                 {
-                    Message = "Current admin data retrieved successfully!",
+                    Message = "Current owner data retrieved successfully!",
                     ExistingData = existingData
                 });
             }
 
-
+            // Save old image if new one not provided
             byte[] oldImageData = owner.ImageData;
 
-
+            // Update fields if new data is provided
             owner.Name = !string.IsNullOrEmpty(mdlOwner.Name) ? mdlOwner.Name : owner.Name;
             owner.Email = !string.IsNullOrEmpty(mdlOwner.Email) ? mdlOwner.Email : owner.Email;
-            owner.Password = !string.IsNullOrEmpty(mdlOwner.Password) ? mdlOwner.Password : owner.Password;
             owner.PhoneNumper = !string.IsNullOrEmpty(mdlOwner.PhoneNumper) ? mdlOwner.PhoneNumper : owner.PhoneNumper;
+
+            if (!string.IsNullOrEmpty(mdlOwner.Password))
+            {
+                var hasher = new PasswordHasher<BusinessOwner>();
+                owner.PasswordHash = hasher.HashPassword(owner, mdlOwner.Password);
+            }
+
             if (mdlOwner.ImageData != null && mdlOwner.ImageData.Length > 0)
             {
                 using var stream = new MemoryStream();
@@ -460,23 +512,21 @@ namespace YallaR7la.Controllers
                 owner.ImageData = oldImageData;
             }
 
-
-           
+            _appDbContext.BusinessOwners.Update(owner);
             await _appDbContext.SaveChangesAsync();
-
 
             return Ok(new
             {
-                Message = "Admin data updated successfully!",
+                Message = "Owner data updated successfully!",
                 UpdatedData = new
                 {
-                    owner.Password,
                     owner.Name,
                     owner.Email,
                     owner.PhoneNumper
                 }
             });
         }
+
         #endregion
 
         // --------- get Owers by name ------------
@@ -525,98 +575,117 @@ namespace YallaR7la.Controllers
 
         // Registration Methods 
         #region Admin Regesteration
-        [HttpPost("AdminRegesteration")]
+        [HttpPost("AdminRegistration")]
         [AllowAnonymous]
         
-        public async Task<IActionResult> AddNewAdmin([FromForm] MdlAdmin newAdmin)
+        public async Task<IActionResult> AddNewAdmin([FromForm] MdlAdmin mdlAdmin)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            using var stream = new MemoryStream();
+            await mdlAdmin.ImageData.CopyToAsync(stream);
+
+            var admin = new Admin
             {
-                using var stream = new MemoryStream();
-                await newAdmin.ImageData.CopyToAsync(stream);
-                var admin = new Admin()
-                {
-                    Name = newAdmin.Name,
-                    Email = newAdmin.Email,
-                    Password = newAdmin.Password,
-                    PhoneNumper = newAdmin.PhoneNumper,
-                    CreatedAt = DateTime.Now,
-                    ImageData = stream.ToArray(),
-                    
-                };
+                Name = mdlAdmin.Name,
+                Email = mdlAdmin.Email,
+                PhoneNumper = mdlAdmin.PhoneNumper,
+                ImageData = stream.ToArray()
+            };
 
+            // Hash password using PasswordHasher
+            var hasher = new PasswordHasher<Admin>();
+            admin.PasswordHash = hasher.HashPassword(admin, mdlAdmin.Password);
 
-                IdentityResult result = await _adminManager.CreateAsync(admin, newAdmin.Password);
-                if (result.Succeeded)
-                    return Ok("Sucsess");
-                else
-                {
-                    foreach (var item in result.Errors)
-                    {
-                        ModelState.AddModelError("", item.Description);
-                    }
-                }
-            }
-            return BadRequest(ModelState);
+            // Save to database
+            _appDbContext.Admins.Add(admin);
+            await _appDbContext.SaveChangesAsync();
+
+            return Ok("Admin registered successfully.");
         }
+
         #endregion
 
 
         #region Admin Login
         [HttpPost("Login")]
-        public async Task<IActionResult> Login([FromBody]MdlLogin login)
+        public async Task<IActionResult> AdminLogin([FromBody] MdlLogin login)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var admin = await _appDbContext.Admins.FirstOrDefaultAsync(a => a.Email == login.Email);
+            if (admin == null)
+                return NotFound("Admin Email is not valid!");
+
+            var hasher = new PasswordHasher<Admin>();
+            var result = hasher.VerifyHashedPassword(admin, admin.PasswordHash, login.Password);
+
+            if (result == PasswordVerificationResult.Failed)
+                return Unauthorized("Invalid password!");
+
+            // JWT claims
+            var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Email, admin.Email),
+                    new Claim(ClaimTypes.NameIdentifier, admin.AdminId.ToString()),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    new Claim("UserType", "Admin"),
+                    new Claim(ClaimTypes.Role, "Admin")
+                };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:SecretKey"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JWT:issuer"],
+                audience: _configuration["JWT:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddHours(1),
+                signingCredentials: creds
+            );
+
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+            return Ok(new
             {
-                Admin admin = await _adminManager.FindByEmailAsync(login.Email);
-                if (admin != null)
-                {
-                    if (await _adminManager.CheckPasswordAsync(admin, login.Password))
-                    {
-                        var claims = new List<Claim>();
-                        claims.Add(new Claim(ClaimTypes.Email, admin.Email));
-                        claims.Add(new Claim(ClaimTypes.NameIdentifier, admin.AdminId.ToString()));
-                        claims.Add(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
-                        claims.Add(new Claim("UserType", "Admin"));
-                        var roles = await _adminManager.GetRolesAsync(admin);
-                        foreach (var role in roles)
-                        {
-                            claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
-                        }
-
-                        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:SecretKey"]));
-                        var sc = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-                        var token = new JwtSecurityToken
-                        (
-                           claims: claims,
-                           issuer: _configuration["JWT:issuer"],
-                           audience: _configuration["JWT:Audience"],
-                           expires: DateTime.Now.AddHours(1),
-                           signingCredentials: sc
-
-
-                        );
-                        var _token = new
-                        {
-                            token = new JwtSecurityTokenHandler().WriteToken(token),
-                            expiration = token.ValidTo
-                        };
-                        return Ok(_token);
-
-                    }
-                    else
-                    {
-                        return Unauthorized();
-                    }
-
-                }
-                else
-                {
-                    ModelState.AddModelError("", "admin Email is not valid!");
-                }
-            }
-            return BadRequest(ModelState);
+                token = tokenString,
+                expiration = token.ValidTo
+            });
         }
+
+
+        #endregion
+
+
+        #region Logout Admin
+        [HttpPost("LogoutAdmin")]
+        [Authorize]
+        public async Task<IActionResult> LogoutAdmin()
+        {
+            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(adminId)) return Unauthorized();
+
+            var admin = await _appDbContext.Admins.FindAsync(adminId);
+            if (admin == null) return Unauthorized();
+
+            // Clear token or perform any logout-specific logic here
+            // Example: admin.Token = null;
+
+            _appDbContext.Admins.Update(admin);
+
+            try
+            {
+                await _appDbContext.SaveChangesAsync();
+                return Ok(new { message = "Admin successfully logged out." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Could not log out admin: {ex.Message}");
+            }
+        }
+
         #endregion
         //-------------------------------------------------
     }

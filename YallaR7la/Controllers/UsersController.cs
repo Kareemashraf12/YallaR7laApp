@@ -22,41 +22,63 @@ namespace YallaR7la.Controllers
     {
         private readonly IMemoryCache _memoryCache;
         private readonly UserManager<User> _userManager;
-        private readonly IConfiguration configuration;
+        private readonly IConfiguration _configuration;
         private readonly AppDbContext _appDbContext;
         public UsersController(AppDbContext appDbContext , UserManager<User> userManager,IConfiguration configuration, IMemoryCache memoryCache)
         {
             _appDbContext = appDbContext;
             _userManager = userManager;
-            this.configuration = configuration;
+            _configuration = configuration;
             _memoryCache = memoryCache;
         }
 
 
+        #region GetUserData
+        [HttpGet("GetUserData")]
+        public async Task<IActionResult> GetUserData(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return BadRequest("Query parameter is required.");
+
+            var lowerQuery = query.ToLower();
+
+            var users = await _appDbContext.Users
+            .Where(u =>
+                u.Name.ToLower().Contains(lowerQuery) ||
+                u.Email.ToLower().Contains(lowerQuery) ||
+                u.City.ToLower().Contains(lowerQuery))
+            .ToListAsync();
+
+            if (!users.Any())
+                return NotFound("No users matched the search criteria.");
+
+            return Ok(users);
+        }
 
 
-        
+        #endregion
 
 
-        [HttpPost("AddNewUser")]
+
+        // i don't remember why this is found !!!!
+        #region Regestriation
+        [HttpPost("Regestriation")]
         [AllowAnonymous]
-        public async Task<IActionResult> AddNewUser([FromForm] MdlUser newUser)
+        public async Task<IActionResult> Regestriation([FromForm] MdlUser newUser)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-           
-
-            // Process the image file
+            // Process the image file (if included)
             using var stream = new MemoryStream();
             await newUser.ImageData.CopyToAsync(stream);
 
-           
+            // Create the User object
             var user = new User
             {
-                UserName = newUser.Email, 
+                UserName = newUser.Email,
                 Name = newUser.Name,
                 Email = newUser.Email,
                 PhoneNumper = newUser.PhoneNumper,
@@ -64,26 +86,62 @@ namespace YallaR7la.Controllers
                 Prefrance = newUser.Prefrance,
                 BirthDate = newUser.BirthDate,
                 ImageData = stream.ToArray(),
-                UniqueIdImage = Guid.NewGuid()
+                UniqueIdImage = Guid.NewGuid() // Automatically generate UniqueIdImage here
             };
-            
+
+            // Create the user
             IdentityResult result = await _userManager.CreateAsync(user, newUser.Password);
             if (result.Succeeded)
             {
-                return Ok("Success");
+                // Generate JWT Token after user creation
+                var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.NameIdentifier, user.Id),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim("UserType", "User") // You can modify the UserType according to your role
+        };
+
+                // Get roles if any (optional, based on your setup)
+                var roles = await _userManager.GetRolesAsync(user);
+                foreach (var role in roles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+
+                // Generate the JWT token
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:SecretKey"]));
+                var signingCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                var token = new JwtSecurityToken(
+                    claims: claims,
+                    issuer: _configuration["JWT:issuer"],
+                    audience: _configuration["JWT:Audience"],
+                    expires: DateTime.Now.AddHours(1),
+                    signingCredentials: signingCredentials
+                );
+
+                var tokenResponse = new
+                {
+                    token = new JwtSecurityTokenHandler().WriteToken(token),
+                    expiration = token.ValidTo
+                };
+
+                // Return the token in the response (don't include UniqueIdImage in the response)
+                return Ok(tokenResponse);
             }
             else
             {
+                // If there were errors during user creation, add them to ModelState
                 foreach (var item in result.Errors)
                 {
                     ModelState.AddModelError("", item.Description);
                 }
             }
+
             return BadRequest(ModelState);
-
-
         }
 
+        #endregion
 
 
         #region Login
@@ -103,19 +161,20 @@ namespace YallaR7la.Controllers
                         claims.Add(new Claim(ClaimTypes.NameIdentifier, user.Id));
                         claims.Add(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
                         claims.Add(new Claim("UserType", "User"));
+                        claims.Add(new Claim(ClaimTypes.Role, "User"));
                         var roles = await _userManager.GetRolesAsync(user);
                         foreach (var role in roles)
                         {
                             claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
                         }
 
-                        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:SecretKey"]));
+                        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:SecretKey"]));
                         var sc = new SigningCredentials(key,SecurityAlgorithms.HmacSha256);
                         var token = new JwtSecurityToken
                         (
                            claims: claims,
-                           issuer: configuration["JWT:issuer"],
-                           audience: configuration["JWT:Audience"],
+                           issuer: _configuration["JWT:issuer"],
+                           audience: _configuration["JWT:Audience"],
                            expires:DateTime.Now.AddHours(1),
                            signingCredentials: sc
                            
@@ -145,64 +204,99 @@ namespace YallaR7la.Controllers
         #endregion
 
 
+
+
+        #region Logout
+        [HttpPost("Logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            // Get the current user ID from the JWT claim
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            // Find the user from the UserManager
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            // If you're storing refresh tokens in AspNetUserTokens, remove the token here
+            var removeResult = await _userManager.RemoveAuthenticationTokenAsync(
+                user,
+                loginProvider: "YallaR7la", 
+                tokenName: "RefreshToken" 
+            );
+
+            // If removing the refresh token failed, return an error message
+            if (!removeResult.Succeeded)
+            {
+                var errors = string.Join("; ", removeResult.Errors.Select(e => e.Description));
+                return StatusCode(500, $"Error revoking refresh token: {errors}");
+            }
+
+            // Return success response
+            return Ok(new { message = "Successfully logged out, and refresh token revoked." });
+        }
+
+        #endregion
+
         //-------------------------------------------------
 
-        //#region Get All Users
-        //[HttpGet("GetAllUsers")]
-        //public async Task<IActionResult> GetAllUsers()
-        //{
-        //    var users = await _appDbContext.Users.ToListAsync();
-        //    return Ok(users);
-        //}
-        //#endregion
+        #region Get All Users
+        [HttpGet("GetAllUsers")]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _appDbContext.Users.ToListAsync();
+            return Ok(users);
+        }
+        #endregion
 
 
         #region Add User
-        /// <summary>
-        /// Do not need it now 
-        /// </summary>
-        /// <param name="mdlUser"></param>
-        /// <returns></returns>
-        [HttpPost]
-        public async Task<IActionResult> AddUser([FromForm] MdlUser mdlUser)
-        {
-            using var stream = new MemoryStream();
-            await mdlUser.ImageData.CopyToAsync(stream);
-            var user = new User
-            {
-                Name = mdlUser.Name,
-                Email = mdlUser.Email,
+        
+        //[HttpPost]
+        //public async Task<IActionResult> AddUser([FromForm] MdlUser mdlUser)
+        //{
+        //    using var stream = new MemoryStream();
+        //    await mdlUser.ImageData.CopyToAsync(stream);
+        //    var user = new User
+        //    {
+        //        Name = mdlUser.Name,
+        //        Email = mdlUser.Email,
 
-                PhoneNumper = mdlUser.PhoneNumper,
-                City = mdlUser.City,
-                Prefrance = mdlUser.Prefrance,
-                BirthDate = mdlUser.BirthDate,
-                ImageData = stream.ToArray(),
-                UniqueIdImage = Guid.NewGuid()
+        //        PhoneNumper = mdlUser.PhoneNumper,
+        //        City = mdlUser.City,
+        //        Prefrance = mdlUser.Prefrance,
+        //        BirthDate = mdlUser.BirthDate,
+        //        ImageData = stream.ToArray(),
+        //        UniqueIdImage = Guid.NewGuid()
 
-            };
-            await _appDbContext.AddAsync(user);
-            await _appDbContext.SaveChangesAsync();
-            return Ok(user);
-        }
+        //    };
+        //    await _appDbContext.AddAsync(user);
+        //    await _appDbContext.SaveChangesAsync();
+        //    return Ok(user);
+        //}
         #endregion
         // --------------- feedback methods-----------------
 
 
         #region Add Comment
-        [HttpPost("AddFeedback/{destinationId}")]
+        [HttpPost("AddComment/{destinationId}")]
         [Authorize(policy: "UserOnly")]
         public async Task<IActionResult> AddComment(string destinationId ,[FromForm]MdlFeedback mdlFeedback)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized("This User can not add comment!");
-            }
+            
             var comment = new Feedback()
             {
                 Content = mdlFeedback.Content,
-                SentimentScore = mdlFeedback.SentimentScore,
+                Rating = mdlFeedback.Rating,
                 UserId = userId,
                 DestinationId = destinationId
             };
@@ -213,33 +307,23 @@ namespace YallaR7la.Controllers
         #endregion
 
 
-        #region Update Comment
+        #region Edit Comment
 
-        [HttpPut("UpdateComment/{userId}")]
-        public async Task<IActionResult> UpdateComment (string userId, [FromForm] MdlFeedback mdlfeedback)
+        [HttpPut("EditComment/{id}")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> EditComment(string id, [FromBody] string newContent)
         {
-            var comment = await _appDbContext.Destinations.FindAsync(userId);
-            if (comment == null)
-            {
-                return NotFound("No comment to update!");
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var comment = await _appDbContext.Feedbacks.FindAsync(id);
 
-            }
+            if (comment == null || comment.UserId != userId)
+                return Forbid("You can only edit your own comments.");
 
-            var user = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (mdlfeedback.UserId != user)
-            {
-                return Forbid("You cant update this comment!");
-            }
-
-            var commentToUpdate = new Feedback()
-            { 
-                Content = mdlfeedback.Content,
-                SentimentScore = mdlfeedback.SentimentScore,
-            };
-
-            return Ok(commentToUpdate);
-
+            comment.Content = newContent;
+            await _appDbContext.SaveChangesAsync();
+            return Ok("Comment updated.");
         }
+
 
         #endregion
 
@@ -247,24 +331,27 @@ namespace YallaR7la.Controllers
 
         #region Delete Comment
 
-        [HttpDelete("DeleteComment/{feedbackId}")]
-        public async Task<IActionResult> DeleteComment(string feedbackId)
+        [HttpDelete("DeleteComment/{id}")]
+        [Authorize] // Applies to all roles
+        public async Task<IActionResult> DeleteComment(string id)
         {
-            var comment = await _appDbContext.Feedbacks.FindAsync(feedbackId);
-            if (comment == null) {
-                return NotFound(" No comment to delete !");
-            }
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userType = User.FindFirstValue("UserType"); // This assumes you store "Admin", "BusinessOwner", or "User" in a custom claim
 
-            if (comment.UserId != userId)
-            {
-                return Forbid("You can not delete This comment!");
-            }
+            var comment = await _appDbContext.Feedbacks.FindAsync(id);
+            if (comment == null)
+                return NotFound("Comment not found.");
+
+            // Only the comment owner, admin, or business owner can delete
+            if (comment.UserId != userId && userType != "Admin" && userType != "BusinessOwner")
+                return Forbid("You are not allowed to delete this comment.");
+
             _appDbContext.Feedbacks.Remove(comment);
             await _appDbContext.SaveChangesAsync();
-            return Ok("Comment is deleted!");
-
+            return Ok("Comment deleted.");
         }
+
+
 
         #endregion
 
@@ -285,7 +372,7 @@ namespace YallaR7la.Controllers
 
             // Check if the favorite record already exists to avoid duplicates
             var existingFavorite = await _appDbContext.Favorites
-                .FirstOrDefaultAsync(f => f.UserId == userId && f.DestinationId == destinationId);
+                .FirstOrDefaultAsync(f => f.DestinationId == destinationId);
             if (existingFavorite != null)
             {
                 return BadRequest("This destination is already in your favorites.");
@@ -295,6 +382,7 @@ namespace YallaR7la.Controllers
             var favorite = new Favorite
             {
                 UserId = userId,
+                FavoritedAt = DateTime.UtcNow,
                 DestinationId = destinationId,
 
             };
@@ -334,7 +422,9 @@ namespace YallaR7la.Controllers
         #endregion
 
 
-        [HttpPatch]
+        #region Reset User Password
+
+        [HttpPatch("ResetPassword/{email}/{newPassword}")]
         public async Task<IActionResult> ResetPassword(string email, string newPassword)
         {
             if (!ModelState.IsValid)
@@ -364,7 +454,7 @@ namespace YallaR7la.Controllers
             return Ok("Your password has been updated successfully.");
         }
 
-
+        #endregion
 
     }
 }
