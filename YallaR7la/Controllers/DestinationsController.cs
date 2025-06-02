@@ -28,6 +28,7 @@ namespace YallaR7la.Controllers
                 .Where(d => d.IsAvelable == true)
                 .Select(d => new
                 {
+                    d.DestinationId,
                     d.Name,
                     d.Category,
                     d.Description,
