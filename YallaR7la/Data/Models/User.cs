@@ -32,7 +32,7 @@ namespace YallaR7la.Data.Models
 
         //public string UserRole { get; set; } // User - Owner - Admin
         public byte[] ImageData { get; set; }
-        public Guid UniqueIdImage = Guid.NewGuid();
+       
 
         //relations 
         public virtual ICollection<Feedback> Feedbacks { get; set; }

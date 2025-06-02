@@ -31,48 +31,54 @@ namespace YallaR7la.Controllers
 
         // handel destination from owner controller
 
-        #region Get All Destinations 
-        [HttpGet("GetAllDestinations")]
-        public async Task<IActionResult> GetAllDestinations()
-        {
-            var destinations = await _appDbContext.Destinations
-                .Include(d => d.destinationImages)
-                .Select(d => new
-                {
-                    d.DestinationId,
-                    d.Name,
-                    d.Description,
-                    d.Location,
-                    d.Category,
-                    d.AvilableNumber,
-                    d.StartDate,
-                    d.EndtDate,
-                    d.Discount,
-                    d.Cost,
-                    d.BusinessOwnerId,
-                    Images = d.destinationImages.Select(img => new
-                    {
-                        img.ImageId,
-                        ImageBase64 = Convert.ToBase64String(img.ImageData)
-                    }).ToList()
-                })
-                .ToListAsync();
+        #region Get All Owner Destinations 
+        //[HttpGet("GetAllOwnerDestinations")]
+        //[Authorize]
+        //public async Task<IActionResult> GetAllOwnerDestinations()
+        //{
+        //    var curruntOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (curruntOwnerId == null)
+        //    {
+        //        return Unauthorized("Sorry you haven't access!");
+        //    }
+        //    var destinations = await _appDbContext.Destinations.Where(d => d.BusinessOwnerId == curruntOwnerId)
+        //        .Include(d => d.destinationImages)
+        //        .Select(d => new
+        //        {
+        //            d.DestinationId,
+        //            d.Name,
+        //            d.Description,
+        //            d.Location,
+        //            d.Category,
+        //            d.AvilableNumber,
+        //            d.StartDate,
+        //            d.EndtDate,
+        //            d.Discount,
+        //            d.Cost,
+        //            d.BusinessOwnerId,
+        //            Images = d.destinationImages.Select(img => new
+        //            {
+        //                img.ImageId,
+        //                ImageBase64 = Convert.ToBase64String(img.ImageData)
+        //            }).ToList()
+        //        })
+        //        .ToListAsync();
 
-            return Ok(new
-            {
-                Count = destinations.Count,
-                Destinations = destinations
-            });
-        }
+        //    return Ok(new
+        //    {
+        //        destinations.Count,
+        //        Destinations = destinations
+        //    });
+        //}
 
         #endregion
 
 
         #region Get DestinationByOwnerId
 
-        [HttpGet("GetDestinationsWithImagesByOwner/{ownerId}")]
+        [HttpGet("GetDestinationsWithImagesAddByOwner")]
         [Authorize(Policy = "OwnerOnly")]
-        public async Task<IActionResult> GetDestinationsWithImagesByOwner(string ownerId)
+        public async Task<IActionResult> GetDestinationsWithImagesAddByOwner(string ownerId)
         {
             var currentOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (currentOwnerId != ownerId)
@@ -100,11 +106,12 @@ namespace YallaR7la.Controllers
                 dest.StartDate,
                 dest.EndtDate,
                 dest.Discount,
+                dest.AverageRating,
                 dest.Cost,
                 dest.AvilableNumber,
                 Images = dest.destinationImages.Select(img => new
                 {
-                    ImageId = img.ImageId,
+                    img.ImageId,
                     ImageBase64 = Convert.ToBase64String(img.ImageData) //  return image data
                 })
             });
@@ -117,41 +124,138 @@ namespace YallaR7la.Controllers
 
 
         #region Get Destination By Id & if id = null get all Dest
-        [HttpGet("GetDestinationById ")]
-        public async Task<IActionResult> GetDestination([FromQuery]string? destinationId)
-        {
-            
-            if (destinationId == null)
-            {
-                var destinations = await _appDbContext.Destinations.Include(d => d.destinationImages).Select(d => new
-                {
-                    d.DestinationId,
-                    d.Name,
-                    d.Description,
-                    d.Location,
-                    d.Category,
-                    d.AvilableNumber,
-                    d.StartDate,
-                    d.EndtDate,
-                    d.Discount,
-                    d.Cost,
-                    d.BusinessOwnerId,
-                    Images = d.destinationImages.Select(img => new
-                    {
-                        img.ImageId,
-                        ImageBase64 = Convert.ToBase64String(img.ImageData)
-                    }).ToList()
-                }).ToListAsync();
-                return Ok(destinations);
-            }
-            var destinationById = await _appDbContext.Destinations.FindAsync(destinationId);
-            if (destinationById == null)
-            {
-                return NotFound("The destination is not found!");
-            }
-            return Ok(destinationById);
+        //[HttpGet("GetDestinationById ")]
+        //public async Task<IActionResult> GetDestination([FromQuery]string? destinationId)
+        //{
 
+        //    if (destinationId == null)
+        //    {
+        //        var destinations = await _appDbContext.Destinations.Include(d => d.destinationImages).Select(d => new
+        //        {
+        //            d.DestinationId,
+        //            d.Name,
+        //            d.Description,
+        //            d.Location,
+        //            d.Category,
+        //            d.AvilableNumber,
+        //            d.StartDate,
+        //            d.EndtDate,
+        //            d.Discount,
+        //            d.Cost,
+        //            d.BusinessOwnerId,
+        //            Images = d.destinationImages.Select(img => new
+        //            {
+        //                img.ImageId,
+        //                ImageBase64 = Convert.ToBase64String(img.ImageData)
+        //            }).ToList()
+        //        }).ToListAsync();
+        //        return Ok(destinations);
+        //    }
+        //    var destinationById = await _appDbContext.Destinations.FindAsync(destinationId);
+        //    if (destinationById == null)
+        //    {
+        //        return NotFound("The destination is not found!");
+        //    }
+        //    return Ok(destinationById);
+
+        //}
+
+        #endregion
+
+
+        #region Get Owner Info
+        [HttpGet("GetOwnerInfo")]
+        [Authorize]
+        public async Task<IActionResult> GetOwnerInfo()
+        {
+            var currentOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentOwnerId == null)
+                return NotFound("There is an error in your token!");
+
+            var ownerInfo = await _appDbContext.BusinessOwners
+                .Where(o => o.BusinessOwnerId == currentOwnerId)
+                .Select(o => new
+                {
+                    o.Name,
+                    o.Email,
+                    o.PhoneNumper,
+                    ImageBase64 = o.ImageData != null ? Convert.ToBase64String(o.ImageData) : null
+                })
+                .FirstOrDefaultAsync();
+
+            if (ownerInfo == null)
+                return NotFound("This Owner is not found!");
+
+            return Ok(ownerInfo);
         }
+
+
+        #endregion
+
+
+        #region Update Owner 
+        [HttpPut("UpdateOwner/{ownerId}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateOwner([FromForm] MdlOwner mdlOwner)
+        {
+            var ownerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var owner = await _appDbContext.BusinessOwners.FirstOrDefaultAsync(o => o.BusinessOwnerId == ownerId);
+            if (owner == null)
+            {
+                return NotFound(new { Message = "This Owner was not found!" });
+            }
+
+            // Save current image
+            byte[] oldImageData = owner.ImageData;
+
+            // If all fields are null, return current data
+            if (mdlOwner.Name == null && mdlOwner.Email == null && mdlOwner.PhoneNumper == null && mdlOwner.ImageData == null)
+            {
+                return Ok(new
+                {
+                    Message = "Current owner data retrieved successfully!",
+                    ExistingData = new
+                    {
+                        owner.Name,
+                        owner.Email,
+                        owner.PhoneNumper,
+                        ImageBase64 = oldImageData != null ? Convert.ToBase64String(oldImageData) : null
+                    }
+                });
+            }
+
+            // Update fields
+            owner.Name = !string.IsNullOrEmpty(mdlOwner.Name) ? mdlOwner.Name : owner.Name;
+            owner.Email = !string.IsNullOrEmpty(mdlOwner.Email) ? mdlOwner.Email : owner.Email;
+            owner.PhoneNumper = !string.IsNullOrEmpty(mdlOwner.PhoneNumper) ? mdlOwner.PhoneNumper : owner.PhoneNumper;
+
+            if (mdlOwner.ImageData != null && mdlOwner.ImageData.Length > 0)
+            {
+                using var stream = new MemoryStream();
+                await mdlOwner.ImageData.CopyToAsync(stream);
+                owner.ImageData = stream.ToArray();
+            }
+            else
+            {
+                owner.ImageData = oldImageData;
+            }
+
+            _appDbContext.BusinessOwners.Update(owner);
+            await _appDbContext.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = "Owner data updated successfully!",
+                UpdatedData = new
+                {
+                    owner.Name,
+                    owner.Email,
+                    owner.PhoneNumper,
+                    ImageBase64 = owner.ImageData != null ? Convert.ToBase64String(owner.ImageData) : null
+                }
+            });
+        }
+
 
         #endregion
 
@@ -185,16 +289,16 @@ namespace YallaR7la.Controllers
 
         #region Add Destination Image
 
-        [HttpPost("AddDestinationImage/{destinationId}/{ownerId}")]
+        [HttpPost("AddDestinationImage/{destinationId}")]
         [Authorize(policy: "OwnerOnly")]
-        public async Task<IActionResult> AddDestinationImage (string ownerId,string destinationId,MdlDistanationImages mdlDistanationImages)
+        public async Task<IActionResult> AddDestinationImage(string destinationId, MdlDistanationImages mdlDistanationImages)
         {
             var currentOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (ownerId != currentOwnerId )
+            if (currentOwnerId == null)
             {
                 return Forbid(" You have not access to do that!");
             }
-            if (mdlDistanationImages.ImageData == null || mdlDistanationImages.ImageData.Length == 0)
+            if (mdlDistanationImages.ImageData == null || mdlDistanationImages.ImageData.Count == 0)
             {
                 return BadRequest("No images uploaded.");
             }
@@ -585,7 +689,7 @@ namespace YallaR7la.Controllers
                 issuer: _configuration["JWT:issuer"],
                 audience: _configuration["JWT:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(1),
+                expires: DateTime.UtcNow.AddDays(1),
                 signingCredentials: creds
             );
 

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using YallaR7la.Data;
 
@@ -11,9 +12,11 @@ using YallaR7la.Data;
 namespace YallaR7la.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250602094435_SaveImageUrlInsteadOfDataByte")]
+    partial class SaveImageUrlInsteadOfDataByte
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -200,9 +203,9 @@ namespace YallaR7la.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<string>("ImageUrl")
                         .IsRequired()
-                        .HasColumnType("varbinary(max)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -254,31 +257,6 @@ namespace YallaR7la.Migrations
                     b.ToTable("AnalyticsReports");
                 });
 
-            modelBuilder.Entity("YallaR7la.Data.Models.Booked", b =>
-                {
-                    b.Property<string>("BookedId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime>("BookedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DestinationId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("BookedId");
-
-                    b.HasIndex("DestinationId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Bookeds");
-                });
-
             modelBuilder.Entity("YallaR7la.Data.Models.BusinessOwner", b =>
                 {
                     b.Property<string>("BusinessOwnerId")
@@ -288,9 +266,9 @@ namespace YallaR7la.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<string>("ImageUrl")
                         .IsRequired()
-                        .HasColumnType("varbinary(max)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -416,9 +394,9 @@ namespace YallaR7la.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<string>("ImageUrl")
                         .IsRequired()
-                        .HasColumnType("varbinary(max)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ImageId");
 
@@ -478,9 +456,9 @@ namespace YallaR7la.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
-                    b.Property<byte[]>("ImageData")
+                    b.Property<string>("ImageUrl")
                         .IsRequired()
-                        .HasColumnType("varbinary(max)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -674,25 +652,6 @@ namespace YallaR7la.Migrations
                     b.Navigation("BusinessOwner");
                 });
 
-            modelBuilder.Entity("YallaR7la.Data.Models.Booked", b =>
-                {
-                    b.HasOne("YallaR7la.Data.Models.Destination", "Destination")
-                        .WithMany("Bookeds")
-                        .HasForeignKey("DestinationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("YallaR7la.Data.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Destination");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("YallaR7la.Data.Models.Chat", b =>
                 {
                     b.HasOne("YallaR7la.Data.Models.Admin", "Admin")
@@ -809,8 +768,6 @@ namespace YallaR7la.Migrations
 
             modelBuilder.Entity("YallaR7la.Data.Models.Destination", b =>
                 {
-                    b.Navigation("Bookeds");
-
                     b.Navigation("Favorites");
 
                     b.Navigation("Feedbacks");

@@ -93,18 +93,65 @@ namespace YallaR7la.Controllers
             return Ok(allAdmin);
         }
         #endregion
+
+
+        #region Get Admin Info
+
+        [HttpGet("GetAdminInfo")]
+        [Authorize]
+
+        public async Task<IActionResult> GetAdminInfo()
+        {
+            var currutAdminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currutAdminId == null)
+                return Forbid("You don't have acess !");
+            var admin =await _appDbContext.Admins.Where(a => a.AdminId == currutAdminId).Select(a => new
+            {
+                a.Name,
+                a.Email,
+                a.PhoneNumper,
+                a.ImageData
+            }).FirstOrDefaultAsync();
+
+            if (admin == null) return NotFound("This Admo not found!");
+
+            return Ok(admin);
+        }
+
+        #endregion 
         //-------------------
 
         #region GetAdminDetails
-        [HttpGet("GetAdminDetails/{adminId}")]
-        public async Task<IActionResult> GetAdminDetails(string adminId)
+        [HttpGet("GetAdminDetails")]
+        [Authorize]
+        public async Task<IActionResult> GetAdminDetails()
         {
-            var adminDetails = await _appDbContext.Admins.Where(a => a.AdminId == adminId).SingleOrDefaultAsync();
-            if (adminDetails == null) {
-                return NotFound(new { Message = "This Admin is not foud!" });
-                    }
+            var currentAdminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentAdminId == null)
+            {
+                return Unauthorized(new { Message = "Unauthorized access." });
+            }
+
+            var adminDetails = await _appDbContext.Admins
+                .Where(a => a.AdminId == currentAdminId)
+                .Select(a => new
+                {
+                    a.AdminId,
+                    a.Name,
+                    a.Email,
+                    a.PhoneNumper,
+                    ImageBase64 = a.ImageData != null ? Convert.ToBase64String(a.ImageData) : null
+                })
+                .SingleOrDefaultAsync();
+
+            if (adminDetails == null)
+            {
+                return NotFound(new { Message = "This Admin is not found!" });
+            }
+
             return Ok(adminDetails);
         }
+
         #endregion
 
 
@@ -217,7 +264,7 @@ namespace YallaR7la.Controllers
             }
             admin.Name = mdlAdmin.Name;
             admin.Email = mdlAdmin.Email;
-            
+            admin.UpdatedAt = DateTime.UtcNow;
             
             await _appDbContext.SaveChangesAsync();
             return Ok(new
@@ -310,18 +357,18 @@ namespace YallaR7la.Controllers
         // Method delete
 
         #region Delate Admin
-        [HttpDelete("Delate_Admin/{adminId}")]
-        public async Task<IActionResult> DeleteAdmin(string adminId)
-        {
-            var adminToDelete = await _appDbContext.Admins.FindAsync(adminId);
-            if (adminToDelete == null)
-            {
-                return NotFound("This Admin is not found , maybe delete before!");
-            }
-             _appDbContext.Remove(adminToDelete);
-            await _appDbContext.SaveChangesAsync();
-            return Ok("admin is delete!");
-        }
+        //[HttpDelete("Delate_Admin/{adminId}")]
+        //public async Task<IActionResult> DeleteAdmin(string adminId)
+        //{
+        //    var adminToDelete = await _appDbContext.Admins.FindAsync(adminId);
+        //    if (adminToDelete == null)
+        //    {
+        //        return NotFound("This Admin is not found , maybe delete before!");
+        //    }
+        //     _appDbContext.Remove(adminToDelete);
+        //    await _appDbContext.SaveChangesAsync();
+        //    return Ok("admin is delete!");
+        //}
         #endregion
         // Owners Method
 
@@ -362,9 +409,9 @@ namespace YallaR7la.Controllers
                 Name = mdlOwner.Name,
                 Email = mdlOwner.Email,
                 PhoneNumper = mdlOwner.PhoneNumper,
-                TimeAdd = DateTime.UtcNow,
+               
                 ImageData = imageData,
-                UniqueIdImage = Guid.NewGuid(),
+               
                 
             };
 
@@ -394,9 +441,35 @@ namespace YallaR7la.Controllers
         [Authorize(policy: "AdminOnly")]
         public async Task<IActionResult> GetAllOwners()
         {
-            var owners = await _appDbContext.BusinessOwners.ToListAsync();
+            // Extract Admin ID from JWT token
+            var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(adminId))
+            {
+                return Unauthorized(new { message = "Admin token is missing or invalid." });
+            }
+
+            // Verify the Admin exists in the database
+            var admin = await _appDbContext.Admins.FindAsync(adminId);
+            if (admin == null)
+            {
+                return NotFound(new { message = "Admin not found." });
+            }
+
+            // If Admin exists, return the list of business owners
+            var owners = await _appDbContext.BusinessOwners
+                .Select(owner => new
+                {
+                    owner.BusinessOwnerId,
+                    owner.Name,
+                    owner.Email,
+                    owner.PhoneNumper,
+                    ImageBase64 = owner.ImageData != null ? Convert.ToBase64String(owner.ImageData) : null
+                })
+                .ToListAsync();
+
             return Ok(owners);
         }
+
         #endregion
 
         // Create acount for Owner
@@ -432,7 +505,7 @@ namespace YallaR7la.Controllers
         //        ImageData = imageData,
         //        UniqueIdImage = Guid.NewGuid(),
         //        PasswordHash = hashedPassword, // make sure this column exists
-                
+
         //    };
 
         //    await _appDbContext.BusinessOwners.AddAsync(owner);
@@ -460,74 +533,7 @@ namespace YallaR7la.Controllers
         #endregion
 
         // --------------- Update Owner -------------
-        #region Update Owner 
-        
-        [HttpPut("UpdateOwner/{ownerId}")]
-        public async Task<IActionResult> UpdateOwner(string ownerId, [FromForm] MdlOwner mdlOwner)
-        {
-            var owner = await _appDbContext.BusinessOwners.FindAsync(ownerId);
-            if (owner == null)
-            {
-                return NotFound(new { Message = "This Owner was not found!" });
-            }
-
-            var existingData = new
-            {
-                owner.Name,
-                owner.Email,
-                owner.PhoneNumper
-            };
-
-            if (mdlOwner.Name == null && mdlOwner.Email == null && mdlOwner.PhoneNumper == null && mdlOwner.Password == null && mdlOwner.ImageData == null)
-            {
-                return Ok(new
-                {
-                    Message = "Current owner data retrieved successfully!",
-                    ExistingData = existingData
-                });
-            }
-
-            // Save old image if new one not provided
-            byte[] oldImageData = owner.ImageData;
-
-            // Update fields if new data is provided
-            owner.Name = !string.IsNullOrEmpty(mdlOwner.Name) ? mdlOwner.Name : owner.Name;
-            owner.Email = !string.IsNullOrEmpty(mdlOwner.Email) ? mdlOwner.Email : owner.Email;
-            owner.PhoneNumper = !string.IsNullOrEmpty(mdlOwner.PhoneNumper) ? mdlOwner.PhoneNumper : owner.PhoneNumper;
-
-            if (!string.IsNullOrEmpty(mdlOwner.Password))
-            {
-                var hasher = new PasswordHasher<BusinessOwner>();
-                owner.PasswordHash = hasher.HashPassword(owner, mdlOwner.Password);
-            }
-
-            if (mdlOwner.ImageData != null && mdlOwner.ImageData.Length > 0)
-            {
-                using var stream = new MemoryStream();
-                await mdlOwner.ImageData.CopyToAsync(stream);
-                owner.ImageData = stream.ToArray();
-            }
-            else
-            {
-                owner.ImageData = oldImageData;
-            }
-
-            _appDbContext.BusinessOwners.Update(owner);
-            await _appDbContext.SaveChangesAsync();
-
-            return Ok(new
-            {
-                Message = "Owner data updated successfully!",
-                UpdatedData = new
-                {
-                    owner.Name,
-                    owner.Email,
-                    owner.PhoneNumper
-                }
-            });
-        }
-
-        #endregion
+      
 
         // --------- get Owers by name ------------
         // get all Owners from Admin controller
@@ -554,7 +560,7 @@ namespace YallaR7la.Controllers
 
         // --------------------------Feedback------------------------
         #region Get Feedbacks By UserId
-        [HttpGet("GetFeedbacksByUserId")]
+        [HttpGet("GetFeedbacksByContent")]
         public async Task<IActionResult> GetFeedbacks([FromQuery] string? contant)
         {
 
@@ -580,8 +586,17 @@ namespace YallaR7la.Controllers
         
         public async Task<IActionResult> AddNewAdmin([FromForm] MdlAdmin mdlAdmin)
         {
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            // Check if email already exists
+            var emailExists = await _appDbContext.Admins
+                .AnyAsync(a => a.Email == mdlAdmin.Email);
+
+            if (emailExists)
+                return Conflict("An admin with this email already exists.");
+
 
             using var stream = new MemoryStream();
             await mdlAdmin.ImageData.CopyToAsync(stream);
@@ -591,6 +606,7 @@ namespace YallaR7la.Controllers
                 Name = mdlAdmin.Name,
                 Email = mdlAdmin.Email,
                 PhoneNumper = mdlAdmin.PhoneNumper,
+                CreatedAt = DateTime.UtcNow,
                 ImageData = stream.ToArray()
             };
 
@@ -642,7 +658,7 @@ namespace YallaR7la.Controllers
                 issuer: _configuration["JWT:issuer"],
                 audience: _configuration["JWT:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddHours(1),
+                expires: DateTime.Now.AddDays(1),
                 signingCredentials: creds
             );
 

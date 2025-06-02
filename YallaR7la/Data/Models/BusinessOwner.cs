@@ -28,9 +28,9 @@ namespace YallaR7la.Data.Models
 
       
         [Required]
-        public DateTime TimeAdd { get; set; }
+        public DateTime TimeAdd { get; set; } = DateTime.UtcNow;
         public byte[] ImageData { get; set; }
-        public Guid UniqueIdImage { get; set; }
+        
         // Relation between admin and bussines owner
         //[ForeignKey(nameof(Admin))]
         //public string AdminId { get; set; }

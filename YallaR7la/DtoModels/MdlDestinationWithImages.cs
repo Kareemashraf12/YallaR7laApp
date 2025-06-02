@@ -30,9 +30,8 @@ namespace YallaR7la.DtoModels
 
         [Required]
         public decimal Cost { get; set; }
-
-        
-        public IFormFile[]? ImageData { get; set; }
+        [Required]
+        public List<IFormFile> ImageData { get; set; }
     }
 
 }

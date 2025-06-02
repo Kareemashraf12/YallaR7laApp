@@ -31,7 +31,7 @@ namespace YallaR7la.Controllers
                     d.Name,
                     d.Category,
                     d.Description,
-                    AverageRating = d.AverageRating
+                    d.AverageRating
                 })
                 .OrderByDescending(d => d.AverageRating)
                 .ToListAsync();
@@ -51,7 +51,7 @@ namespace YallaR7la.Controllers
                 .Where(d => d.DestinationId == destinationId)
                 .Include(d => d.destinationImages)
                 .Include(d => d.Feedbacks)
-                    .ThenInclude(c => c.User) // Assumes each comment has a User navigation property
+                    .ThenInclude(c => c.User)
                 .Select(d => new
                 {
                     d.DestinationId,
@@ -60,7 +60,6 @@ namespace YallaR7la.Controllers
                     d.Location,
                     d.Category,
                     d.AvilableNumber,
-                    d.Rating,
                     d.AverageRating,
                     d.StartDate,
                     d.EndtDate,
@@ -71,14 +70,14 @@ namespace YallaR7la.Controllers
                     Images = d.destinationImages.Select(i => new
                     {
                         i.ImageId,
-                        i.ImageData // or i.ImageData if stored as bytes
+                        ImageBase64 = i.ImageData != null ? Convert.ToBase64String(i.ImageData) : null
                     }),
                     Comments = d.Feedbacks.Select(c => new
                     {
                         c.FeedbackId,
                         c.Content,
                         c.dataSubmited,
-                        Username = c.User.UserName // or Email
+                        Username = c.User.UserName
                     })
                 })
                 .FirstOrDefaultAsync();
@@ -88,6 +87,7 @@ namespace YallaR7la.Controllers
 
             return Ok(destination);
         }
+
 
 
         #endregion
@@ -108,8 +108,9 @@ namespace YallaR7la.Controllers
                     d.Name,
                     d.Description,
                     d.Category,
-                    AverageRating = d.AverageRating,
+                    d.AverageRating,
                     d.Location,
+                    d.Discount,
                     d.Cost
                 })
                 .OrderByDescending(d => d.AverageRating)
@@ -159,56 +160,56 @@ namespace YallaR7la.Controllers
 
         #region AddFeedback
 
-        [HttpPost("AddFeedback/{destinationId}")]
-        public async Task<IActionResult> AddFeedback(string destinationId, [FromBody] MdlFeedback model)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        //[HttpPost("AddFeedback/{destinationId}")]
+        //public async Task<IActionResult> AddFeedback(string destinationId, [FromBody] MdlFeedback model)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized("User not found in token.");
+        //    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userId))
+        //        return Unauthorized("User not found in token.");
 
-            var destination = await _appDbContext.Destinations
-                .Include(d => d.Feedbacks)
-                .FirstOrDefaultAsync(d => d.DestinationId == destinationId);
+        //    var destination = await _appDbContext.Destinations
+        //        .Include(d => d.Feedbacks)
+        //        .FirstOrDefaultAsync(d => d.DestinationId == destinationId);
 
-            if (destination == null)
-                return NotFound("Destination not found.");
+        //    if (destination == null)
+        //        return NotFound("Destination not found.");
 
-            var feedback = new Feedback
-            {
-                
-                Content = model.Content,
-                Rating = model.Rating,
-                DestinationId = destinationId,
-                UserId = userId,
-                dataSubmited = DateTime.UtcNow
-            };
+        //    var feedback = new Feedback
+        //    {
 
-            await _appDbContext.Feedbacks.AddAsync(feedback);
-            await _appDbContext.SaveChangesAsync();
+        //        Content = model.Content,
+        //        Rating = model.Rating,
+        //        DestinationId = destinationId,
+        //        UserId = userId,
+        //        dataSubmited = DateTime.UtcNow
+        //    };
 
-            // Re-fetch feedbacks after saving to ensure accuracy
-            var allRatings = await _appDbContext.Feedbacks
-                .Where(f => f.DestinationId == destinationId)
-                .Select(f => f.Rating)
-                .ToListAsync();
+        //    await _appDbContext.Feedbacks.AddAsync(feedback);
+        //    await _appDbContext.SaveChangesAsync();
 
-            var average = (int)Math.Round(allRatings.Average());
-            destination.AverageRating = average;
-            destination.FeedbackCount = allRatings.Count;
+        //    Re - fetch feedbacks after saving to ensure accuracy
+        //    var allRatings = await _appDbContext.Feedbacks
+        //        .Where(f => f.DestinationId == destinationId)
+        //        .Select(f => f.Rating)
+        //        .ToListAsync();
 
-            _appDbContext.Destinations.Update(destination);
-            await _appDbContext.SaveChangesAsync();
+        //    var average = (int)Math.Round(allRatings.Average());
+        //    destination.AverageRating = average;
+        //    destination.FeedbackCount = allRatings.Count;
 
-            return Ok(new
-            {
-                message = "Comment and rating submitted successfully.",
-                newAverageRating = destination.AverageRating,
-                totalComments = destination.FeedbackCount
-            });
-        }
+        //    _appDbContext.Destinations.Update(destination);
+        //    await _appDbContext.SaveChangesAsync();
+
+        //    return Ok(new
+        //    {
+        //        message = "Comment and rating submitted successfully.",
+        //        newAverageRating = destination.AverageRating,
+        //        totalComments = destination.FeedbackCount
+        //    });
+        //}
 
 
         #endregion
@@ -216,8 +217,15 @@ namespace YallaR7la.Controllers
         #region Book Destination
 
         [HttpPut("Booking/{destinationId}")]
+        [Authorize] // Ensure only logged-in users can book
         public async Task<IActionResult> BookDestination(string destinationId)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { message = "User ID not found in token." });
+            }
+
             var destination = await _appDbContext.Destinations.FindAsync(destinationId);
 
             if (destination == null)
@@ -235,6 +243,7 @@ namespace YallaR7la.Controllers
                 return BadRequest(new { message = "Sorry, the destination is fully booked." });
             }
 
+            // Decrease availability
             destination.AvilableNumber--;
 
             if (destination.AvilableNumber == 0)
@@ -242,7 +251,18 @@ namespace YallaR7la.Controllers
                 destination.IsAvelable = false;
             }
 
+            // Save to Booked table
+            var booking = new Booked
+            {
+                
+                DestinationId = destinationId,
+                UserId = userId,
+                
+            };
+
+            _appDbContext.Bookeds.Add(booking);
             _appDbContext.Destinations.Update(destination);
+
             await _appDbContext.SaveChangesAsync();
 
             return Ok(new
@@ -254,24 +274,39 @@ namespace YallaR7la.Controllers
 
 
 
+
         #endregion
 
 
         #region UnBook Destination
-
         [HttpPut("UnBookDestination/{destinationId}")]
+        [Authorize]
         public async Task<IActionResult> UnBookDestination(string destinationId)
         {
-            var destination = await _appDbContext.Destinations.FindAsync(destinationId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized("You must be logged in to unbook.");
 
+            var destination = await _appDbContext.Destinations.FindAsync(destinationId);
             if (destination == null)
             {
                 return NotFound(new { message = "Destination not found." });
             }
 
+            // Find the booking to remove
+            var booked = await _appDbContext.Bookeds
+                .FirstOrDefaultAsync(b => b.DestinationId == destinationId && b.UserId == userId);
+
+            if (booked == null)
+            {
+                return NotFound(new { message = "Booking not found for this user and destination." });
+            }
+
+            // Delete booking record
+            _appDbContext.Bookeds.Remove(booked);
+
             // Increase available slots
             destination.AvilableNumber++;
-
             if (!destination.IsAvelable && destination.AvilableNumber > 0)
             {
                 destination.IsAvelable = true;
@@ -288,9 +323,48 @@ namespace YallaR7la.Controllers
         }
 
 
+
         #endregion
 
+        #region GetBookedDestinations
 
+        [HttpGet("GetBookedDestinations")]
+        [Authorize]
+        public async Task<IActionResult> GetBookedDestinations()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+                return Unauthorized("You must be logged in.");
+
+            var bookedDestinations = await _appDbContext.Bookeds
+                .Where(b => b.UserId == userId)
+                .Include(b => b.Destination)
+                    .ThenInclude(d => d.destinationImages) // Include images navigation property
+                .Select(b => new
+                {
+                    b.Destination.DestinationId,
+                    b.Destination.Name,
+                    b.Destination.Description,
+                    b.Destination.Location,
+                    b.Destination.Category,
+                    b.Destination.Cost,
+                    b.Destination.StartDate,
+                    b.Destination.EndtDate,
+                    b.BookedDate,
+                    Images = b.Destination.destinationImages.Select(img => new
+                    {
+                        img.ImageId,
+                        ImageBase64 = Convert.ToBase64String(img.ImageData)
+                    }).ToList()
+                })
+                .ToListAsync();
+
+            return Ok(bookedDestinations);
+        }
+
+
+
+        #endregion
 
         #region View Comments 
         [HttpGet("GetCommentsForDestination/{destinationId}")]

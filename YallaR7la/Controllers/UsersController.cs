@@ -34,33 +34,103 @@ namespace YallaR7la.Controllers
 
 
         #region GetUserData
-        [HttpGet("GetUserData")]
-        public async Task<IActionResult> GetUserData(string query)
-        {
-            if (string.IsNullOrWhiteSpace(query))
-                return BadRequest("Query parameter is required.");
+        //[HttpGet("GetUserData")]
+        //public async Task<IActionResult> GetUserData(string query)
+        //{
+        //    if (string.IsNullOrWhiteSpace(query))
+        //        return BadRequest("Query parameter is required.");
 
-            var lowerQuery = query.ToLower();
+        //    var lowerQuery = query.ToLower();
 
-            var users = await _appDbContext.Users
-            .Where(u =>
-                u.Name.ToLower().Contains(lowerQuery) ||
-                u.Email.ToLower().Contains(lowerQuery) ||
-                u.City.ToLower().Contains(lowerQuery))
-            .ToListAsync();
+        //    var users = await _appDbContext.Users
+        //    .Where(u =>
+        //        u.Name.ToLower().Contains(lowerQuery) ||
+        //        u.Email.ToLower().Contains(lowerQuery) ||
+        //        u.City.ToLower().Contains(lowerQuery))
+        //    .ToListAsync();
 
-            if (!users.Any())
-                return NotFound("No users matched the search criteria.");
+        //    if (!users.Any())
+        //        return NotFound("No users matched the search criteria.");
 
-            return Ok(users);
-        }
+        //    return Ok(users);
+        //}
 
 
         #endregion
 
 
 
-        // i don't remember why this is found !!!!
+        #region Get User Info
+        [HttpGet("GetUserInfo")]
+        [Authorize]
+        public async Task<IActionResult> GetUserInfo()
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentUserId == null)
+                return NotFound("This user is not found!");
+
+            var userInfo = await _appDbContext.Users
+                .Where(u => u.Id == currentUserId)
+                .Select(u => new
+                {
+                    u.Name,
+                    u.Email,
+                    u.City,
+                    u.Age,
+                    u.Prefrance,
+                    ImageBase64 = u.ImageData != null ? Convert.ToBase64String(u.ImageData) : null
+                })
+                .FirstOrDefaultAsync();
+
+            return Ok(userInfo);
+        }
+
+
+        #endregion
+
+
+        #region Edit User Info
+
+        [HttpPut("EditUserInfo")]
+        [Authorize]
+        public async Task<IActionResult> EditUserInfo([FromForm] MdlUser mdlUser)
+        {
+            var currutUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currutUserId == null)
+                return Unauthorized("This user is not authorized!");
+
+            var user = await _appDbContext.Users.FindAsync(currutUserId);
+            if (user == null)
+                return NotFound("User not found!");
+
+           
+            user.Name = mdlUser.Name;
+            user.Email = mdlUser.Email;
+            user.City = mdlUser.City;
+            user.Prefrance = mdlUser.Prefrance;
+            user.PhoneNumber = mdlUser.PhoneNumper;
+            user.BirthDate = mdlUser.BirthDate;
+
+            
+            if (mdlUser.ImageData != null && mdlUser.ImageData.Length > 0)
+            {
+                using (var ms = new MemoryStream())
+                {
+                    await mdlUser.ImageData.CopyToAsync(ms);
+                    user.ImageData = ms.ToArray();
+                }
+            }
+           
+            await _appDbContext.SaveChangesAsync();
+
+            return Ok("User profile updated successfully.");
+        }
+
+
+
+        #endregion
+
+        // ----------------------------------------!!!!
         #region Regestriation
         [HttpPost("Regestriation")]
         [AllowAnonymous]
@@ -86,7 +156,7 @@ namespace YallaR7la.Controllers
                 Prefrance = newUser.Prefrance,
                 BirthDate = newUser.BirthDate,
                 ImageData = stream.ToArray(),
-                UniqueIdImage = Guid.NewGuid() // Automatically generate UniqueIdImage here
+                
             };
 
             // Create the user
@@ -95,12 +165,12 @@ namespace YallaR7la.Controllers
             {
                 // Generate JWT Token after user creation
                 var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("UserType", "User") // You can modify the UserType according to your role
-        };
+                {
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    new Claim("UserType", "User") // You can modify the UserType according to your role
+                };
 
                 // Get roles if any (optional, based on your setup)
                 var roles = await _userManager.GetRolesAsync(user);
@@ -116,7 +186,7 @@ namespace YallaR7la.Controllers
                     claims: claims,
                     issuer: _configuration["JWT:issuer"],
                     audience: _configuration["JWT:Audience"],
-                    expires: DateTime.Now.AddHours(1),
+                    expires: DateTime.Now.AddDays(1),
                     signingCredentials: signingCredentials
                 );
 
@@ -175,7 +245,7 @@ namespace YallaR7la.Controllers
                            claims: claims,
                            issuer: _configuration["JWT:issuer"],
                            audience: _configuration["JWT:Audience"],
-                           expires:DateTime.Now.AddHours(1),
+                           expires:DateTime.Now.AddDays(1),
                            signingCredentials: sc
                            
 
@@ -249,12 +319,12 @@ namespace YallaR7la.Controllers
         //-------------------------------------------------
 
         #region Get All Users
-        [HttpGet("GetAllUsers")]
-        public async Task<IActionResult> GetAllUsers()
-        {
-            var users = await _appDbContext.Users.ToListAsync();
-            return Ok(users);
-        }
+        //[HttpGet("GetAllUsers")]
+        //public async Task<IActionResult> GetAllUsers()
+        //{
+        //    var users = await _appDbContext.Users.ToListAsync();
+        //    return Ok(users);
+        //}
         #endregion
 
 

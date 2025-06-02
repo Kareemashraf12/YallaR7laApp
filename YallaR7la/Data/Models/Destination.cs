@@ -52,6 +52,7 @@ namespace YallaR7la.Data.Models
         public ICollection<Feedback> Feedbacks { get; set; }
         // Navigation property for many-to-many relation
         public ICollection<Favorite> Favorites { get; set; }
+        public ICollection<Booked> Bookeds { get; set; }
         public ICollection<DestinationImages> destinationImages { get; set; }
 
     }

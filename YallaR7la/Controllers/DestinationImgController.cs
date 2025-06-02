@@ -43,7 +43,7 @@ namespace YallaR7la.Controllers
 
 
 
-        //#region Add Images to distanation
+        #region Add Images to distanation
         //[HttpPost("AddImagestodistanation")]
 
         //public async Task<IActionResult> AddDestinationImages([FromForm]MdlDistanationImages mdlDistanationImages)
@@ -75,7 +75,7 @@ namespace YallaR7la.Controllers
         //    {
         //        return BadRequest("DestinationId is required.");
         //    }
-            
+
 
         //    if (destinationComments == null || destinationComments.Count == 0)
         //    {
@@ -84,43 +84,43 @@ namespace YallaR7la.Controllers
         //    return Ok(destinationComments);
         //}
 
-        //#endregion
+        #endregion
 
-        //#region Add To Favorites
+        #region Add To Favorites
 
-        //[HttpPost("AddToFavorites/{destinationId}")]
-        //[Authorize] // Ensure only authenticated users can access 
-        //public async Task<IActionResult> AddToFavorites(string destinationId)
-        //{
-            
-        //    string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        //    if (string.IsNullOrEmpty(userId))
-        //    {
-        //        return Unauthorized("User is not authenticated.");
-        //    }
+        [HttpPost("AddToFavorites/{destinationId}")]
+        [Authorize] // Ensure only authenticated users can access 
+        public async Task<IActionResult> AddToFavorites(string destinationId)
+        {
 
-        //    // Check if the favorite record already exists to avoid duplicates
-        //    var existingFavorite = await _appDbContext.Favorites
-        //        .FirstOrDefaultAsync(f => f.UserId == userId && f.DestinationId == destinationId);
-        //    if (existingFavorite != null)
-        //    {
-        //        return BadRequest("This destination is already in your favorites.");
-        //    }
+            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User is not authenticated.");
+            }
 
-            
-        //    var favorite = new Favorite
-        //    {
-        //        UserId = userId,
-        //        DestinationId = destinationId,
-                
-        //    };
+            // Check if the favorite record already exists to avoid duplicates
+            var existingFavorite = await _appDbContext.Favorites
+                .FirstOrDefaultAsync(f => f.UserId == userId && f.DestinationId == destinationId);
+            if (existingFavorite != null)
+            {
+                return BadRequest("This destination is already in your favorites.");
+            }
 
-        //    await _appDbContext.Favorites.AddAsync(favorite);
-        //    await _appDbContext.SaveChangesAsync();
 
-        //    return Ok(favorite);
-        //}
+            var favorite = new Favorite
+            {
+                UserId = userId,
+                DestinationId = destinationId,
 
-        //#endregion
+            };
+
+            await _appDbContext.Favorites.AddAsync(favorite);
+            await _appDbContext.SaveChangesAsync();
+
+            return Ok(favorite);
+        }
+
+        #endregion
     }
 }

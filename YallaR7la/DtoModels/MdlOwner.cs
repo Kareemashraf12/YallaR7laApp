@@ -22,7 +22,7 @@ namespace YallaR7la.DtoModels
         [Required]
         public DateTime TimeAdd { get; set; }
         public IFormFile ImageData { get; set; }
-        public Guid UniqueIdImage { get; set; }
+        
         
 
         

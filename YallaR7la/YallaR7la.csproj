@@ -25,7 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="NewFolder\" />
+    <Folder Include="wwwroot\Images\admins\" />
+    <Folder Include="wwwroot\Images\destinations\" />
+    <Folder Include="wwwroot\Images\owners\" />
+    <Folder Include="wwwroot\Images\users\" />
   </ItemGroup>
 
 </Project>

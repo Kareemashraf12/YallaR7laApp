@@ -5,7 +5,7 @@ namespace YallaR7la.DtoModels
     public class MdlDistanationImages
     {
         [Required]
-        public IFormFile[] ImageData { get; set; }
+        public List<IFormFile> ImageData { get; set; }
         public string DestinationId { get; set; }
     }
 }

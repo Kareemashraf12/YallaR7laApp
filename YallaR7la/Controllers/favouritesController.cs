@@ -30,7 +30,7 @@ namespace YallaR7la.Controllers
 
             var favorites = await _appDbContext.Favorites
                 .Where(f => f.UserId == userId)
-                .Include(f => f.Destination)
+                .Include(f => f.Destination).ThenInclude(i => i.destinationImages)
                 .Select(f => new
                 {
                     f.Destination.DestinationId,
@@ -38,7 +38,12 @@ namespace YallaR7la.Controllers
                     f.Destination.Category,
                     f.Destination.Description,
                     f.Destination.AverageRating,
-                    f.FavoritedAt
+                    f.FavoritedAt,
+                    Images = f.Destination.destinationImages.Select(img => new
+                    {
+                        img.ImageId,
+                        ImageBase64 = Convert.ToBase64String(img.ImageData)
+                    }).ToList()
                 })
                 .ToListAsync();
 

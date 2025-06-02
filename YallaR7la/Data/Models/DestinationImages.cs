@@ -13,7 +13,7 @@ namespace YallaR7la.Data.Models
             [Required]
             public byte[] ImageData { get; set; } 
 
-            public Guid UniqeImageId { get; set; } = Guid.NewGuid();
+            
 
             [Required]
             [ForeignKey(nameof(Destination))]

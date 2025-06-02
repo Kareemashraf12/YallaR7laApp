@@ -26,11 +26,10 @@ namespace YallaR7la.Data.Models
         [RegularExpression(@"^(\+201|01|00201)[0-2,5]{1}[0-9]{8}", ErrorMessage = "Invalid phone number format.")]
         public string PhoneNumper { get; set; }
         [Required]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public byte[] ImageData { get; set; }
-        public Guid UniqeImageId { get; set; } = Guid.NewGuid();
        
 
         // relations

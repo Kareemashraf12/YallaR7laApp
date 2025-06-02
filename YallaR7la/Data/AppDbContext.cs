@@ -17,6 +17,7 @@ namespace YallaR7la.Data
         public DbSet<Destination> Destinations { get; set; }
         public DbSet<Feedback> Feedbacks { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
+        public DbSet<Booked> Bookeds { get; set; }
         public DbSet<AnalyticsReport> AnalyticsReports { get; set; }
         public DbSet<DestinationImages> DestinationImages { get; set; }
         public DbSet<Message> Message { get; set; }
