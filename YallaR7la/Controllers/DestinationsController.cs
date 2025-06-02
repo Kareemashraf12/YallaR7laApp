@@ -217,7 +217,7 @@ namespace YallaR7la.Controllers
 
         #region Book Destination
 
-        [HttpPut("Booking/{destinationId}")]
+        [HttpPost("Booking/{destinationId}")]
         [Authorize] // Ensure only logged-in users can book
         public async Task<IActionResult> BookDestination(string destinationId)
         {
@@ -280,7 +280,7 @@ namespace YallaR7la.Controllers
 
 
         #region UnBook Destination
-        [HttpPut("UnBookDestination/{destinationId}")]
+        [HttpDelete("UnBookDestination/{destinationId}")]
         [Authorize]
         public async Task<IActionResult> UnBookDestination(string destinationId)
         {
