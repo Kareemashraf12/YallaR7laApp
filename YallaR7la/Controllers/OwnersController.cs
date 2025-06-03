@@ -73,51 +73,86 @@ namespace YallaR7la.Controllers
 
         #endregion
 
+ #region GetDestinationsForOwnerByCategory
+
+ [HttpGet("GetDestinationsForOwnerByCategory")]
+ [Authorize]
+ public async Task<IActionResult> GetDestinationsForOwnerByCategory([FromQuery] string category)
+ {
+     var carruntOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+     if (carruntOwnerId == null)
+         return Unauthorized("Sorry you can't do that!");
+     if (string.IsNullOrWhiteSpace(category))
+         return BadRequest("Category is required.");
+
+     var destinations = await _appDbContext.Destinations
+         .Where(d => d.BusinessOwnerId == carruntOwnerId && d.Category.ToLower() == category.ToLower() && d.IsAvelable == true)
+         .Select(d => new
+         {
+             d.DestinationId,
+             d.Name,
+             d.Description,
+             d.Category,
+             d.AverageRating,
+             d.Location,
+             d.Discount,
+             d.Cost
+         })
+         .OrderByDescending(d => d.AverageRating)
+         .ToListAsync();
+
+     if (destinations == null || destinations.Count == 0)
+         return NotFound($"No destinations found under category: {category}");
+
+     return Ok(destinations);
+ }
+
+
+ #endregion
+
 
         #region Get DestinationByOwnerId
 
-        [HttpGet("GetDestinationsWithImagesAddByOwner")]
-        [Authorize(Policy = "OwnerOnly")]
-        public async Task<IActionResult> GetDestinationsWithImagesAddByOwner(string ownerId)
-        {
-            var currentOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (currentOwnerId != ownerId)
+           [HttpGet("GetDestinationsWithImagesAddByOwner")]
+            [Authorize(Policy = "OwnerOnly")]
+            public async Task<IActionResult> GetDestinationsWithImagesAddByOwner()
             {
-                return Forbid("You are not authorized to view these destinations.");
-            }
-
-            var destinationsWithImages = await _appDbContext.Destinations
-                .Where(d => d.BusinessOwnerId == ownerId)
-                .Include(d => d.destinationImages) // <-- includes the related images
-                .ToListAsync();
-
-            if (destinationsWithImages == null || !destinationsWithImages.Any())
-            {
-                return NotFound("No destinations found for this owner.");
-            }
-
-            //  remove image binary data if needed to avoid large payloads
-            var result = destinationsWithImages.Select(dest => new
-            {
-                dest.Name,
-                dest.Description,
-                dest.Location,
-                dest.Category,
-                dest.StartDate,
-                dest.EndtDate,
-                dest.Discount,
-                dest.AverageRating,
-                dest.Cost,
-                dest.AvilableNumber,
-                Images = dest.destinationImages.Select(img => new
+                var currentOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                
+            
+                var destinationsWithImages = await _appDbContext.Destinations
+                    .Where(d => d.BusinessOwnerId == currentOwnerId)
+                    .Include(d => d.destinationImages) // <-- includes the related images
+                    .ToListAsync();
+            
+                if (destinationsWithImages == null || !destinationsWithImages.Any())
                 {
-                    img.ImageId,
-                    ImageBase64 = Convert.ToBase64String(img.ImageData) //  return image data
-                })
-            });
-
-            return Ok(result);
-        }
+                    return NotFound("No destinations found for this owner.");
+                }
+            
+                //  remove image binary data if needed to avoid large payloads
+                var result = destinationsWithImages.Select(dest => new
+                {
+                    dest.DestinationId,
+                    dest.Name,
+                    dest.Description,
+                    dest.Location,
+                    dest.Category,
+                    dest.StartDate,
+                    dest.EndtDate,
+                    dest.Discount,
+                    dest.AverageRating,
+                    dest.Cost,
+                    dest.AvilableNumber,
+                    Images = dest.destinationImages.Select(img => new
+                    {
+                        img.ImageId,
+                        img.ImageData //  return image data
+                    })
+                });
+            
+                return Ok(result);
+            }
 
 
         #endregion
