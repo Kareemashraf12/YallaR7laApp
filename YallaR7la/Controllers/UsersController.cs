@@ -91,40 +91,44 @@ namespace YallaR7la.Controllers
 
         #region Edit User Info
 
-        [HttpPut("EditUserInfo")]
-        [Authorize]
-        public async Task<IActionResult> EditUserInfo([FromForm] MdlUser mdlUser)
-        {
-            var currutUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (currutUserId == null)
-                return Unauthorized("This user is not authorized!");
+         [HttpPut("EditUserInfo")]
+         [Authorize]
+         public async Task<IActionResult> EditUserInfo([FromForm] MdlUser mdlUser)
+         {
+             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+             if (string.IsNullOrEmpty(currentUserId))
+                 return Unauthorized("This user is not authorized!");
+        
+             var user = await _appDbContext.Users.FindAsync(currentUserId);
+             if (user == null)
+                 return NotFound("User not found!");
+        
+             // Use existing values if input is null or empty
+             user.Name = !string.IsNullOrWhiteSpace(mdlUser.Name) ? mdlUser.Name : user.Name;
+             user.Email = !string.IsNullOrWhiteSpace(mdlUser.Email) ? mdlUser.Email : user.Email;
+             user.City = !string.IsNullOrWhiteSpace(mdlUser.City) ? mdlUser.City : user.City;
+             user.Prefrance = !string.IsNullOrWhiteSpace(mdlUser.Prefrance) ? mdlUser.Prefrance : user.Prefrance;
+             user.PhoneNumber = !string.IsNullOrWhiteSpace(mdlUser.PhoneNumper) ? mdlUser.PhoneNumper : user.PhoneNumber;
+             user.BirthDate = mdlUser.BirthDate != null && mdlUser.BirthDate != default(DateTime)
+                 ? mdlUser.BirthDate
+                 : user.BirthDate;
+             user.PasswordHash = user.PasswordHash;
+        
+             // Image update only if provided
+             if (mdlUser.ImageData != null && mdlUser.ImageData.Length > 0)
+             {
+                 using var ms = new MemoryStream();
+                 await mdlUser.ImageData.CopyToAsync(ms);
+                 user.ImageData = ms.ToArray();
+             }
+        
+             await _appDbContext.SaveChangesAsync();
+        
+             // Return updated user data
+             return Ok("User profile updated succesfully");
+             
+         }
 
-            var user = await _appDbContext.Users.FindAsync(currutUserId);
-            if (user == null)
-                return NotFound("User not found!");
-
-           
-            user.Name = mdlUser.Name;
-            user.Email = mdlUser.Email;
-            user.City = mdlUser.City;
-            user.Prefrance = mdlUser.Prefrance;
-            user.PhoneNumber = mdlUser.PhoneNumper;
-            user.BirthDate = mdlUser.BirthDate;
-
-            
-            if (mdlUser.ImageData != null && mdlUser.ImageData.Length > 0)
-            {
-                using (var ms = new MemoryStream())
-                {
-                    await mdlUser.ImageData.CopyToAsync(ms);
-                    user.ImageData = ms.ToArray();
-                }
-            }
-           
-            await _appDbContext.SaveChangesAsync();
-
-            return Ok("User profile updated successfully.");
-        }
 
 
 
