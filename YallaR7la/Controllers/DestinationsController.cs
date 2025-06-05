@@ -25,14 +25,18 @@ namespace YallaR7la.Controllers
         public async Task<IActionResult> GetAllDestinations()
         {
             var destinations = await _appDbContext.Destinations
-                .Where(d => d.IsAvelable == true)
+                .Where(d => d.IsAvelable == true)..Include(img => img.destinationImages)
                 .Select(d => new
                 {
                     d.DestinationId,
                     d.Name,
                     d.Category,
                     d.Description,
-                    d.AverageRating
+                    d.AverageRating,
+                    images = d.destinationImages.Select(i => new {
+                i.ImageId,
+                i.ImageData
+                })
                 })
                 .OrderByDescending(d => d.AverageRating)
                 .ToListAsync();
@@ -102,7 +106,7 @@ namespace YallaR7la.Controllers
                 return BadRequest("Category is required.");
 
             var destinations = await _appDbContext.Destinations
-                .Where(d => d.Category.ToLower() == category.ToLower() && d.IsAvelable == true)
+                .Where(d => d.Category.ToLower() == category.ToLower() && d.IsAvelable == true).Include(img => img.destinationImages)
                 .Select(d => new
                 {
                     d.DestinationId,
@@ -112,8 +116,12 @@ namespace YallaR7la.Controllers
                     d.AverageRating,
                     d.Location,
                     d.Discount,
-                    d.Cost
-                })
+                    d.Cost,
+                    images = d.destinationImages.Select(i => new {
+                    i.ImageId,
+                    i.ImageData
+                    })
+                    })
                 .OrderByDescending(d => d.AverageRating)
                 .ToListAsync();
 
