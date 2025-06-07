@@ -73,48 +73,57 @@ namespace YallaR7la.Controllers
 
         #endregion
 
- #region GetDestinationsForOwnerByCategory
-
- [HttpGet("GetDestinationsForOwnerByCategory")]
- [Authorize]
- public async Task<IActionResult> GetDestinationsForOwnerByCategory([FromQuery] string category)
- {
-     var carruntOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-     if (carruntOwnerId == null)
-         return Unauthorized("Sorry you can't do that!");
-     if (string.IsNullOrWhiteSpace(category))
-         return BadRequest("Category is required.");
-
-     var destinations = await _appDbContext.Destinations
-         .Where(d => d.BusinessOwnerId == carruntOwnerId && d.Category.ToLower() == category.ToLower() && d.IsAvelable == true)
-         .Select(d => new
-         {
-             d.DestinationId,
-             d.Name,
-             d.Description,
-             d.Category,
-             d.AverageRating,
-             d.Location,
-             d.Discount,
-             d.Cost
-         })
-         .OrderByDescending(d => d.AverageRating)
-         .ToListAsync();
-
-     if (destinations == null || destinations.Count == 0)
-         return NotFound($"No destinations found under category: {category}");
-
-     return Ok(destinations);
- }
+         #region GetDestinationsForOwnerByCategory
 
 
- #endregion
+
+            [HttpGet("GetDestinationsForOwnerByCategory")]
+            [Authorize]
+            public async Task<IActionResult> GetDestinationsForOwnerByCategory([FromQuery] string category)
+            {
+                var carruntOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (carruntOwnerId == null)
+                    return Unauthorized("Sorry you can't do that!");
+                if (string.IsNullOrWhiteSpace(category))
+                    return BadRequest("Category is required.");
+            
+                var destinations = await _appDbContext.Destinations
+                    .Where(d => d.BusinessOwnerId == carruntOwnerId && d.Category.ToLower() == category.ToLower() && d.IsAvelable == true).Include(i => i.destinationImages)
+                    .Select(d => new
+                    {
+                        d.DestinationId,
+                        d.Name,
+                        d.Description,
+                        d.Location,
+                        d.Category,
+                        d.StartDate,
+                        d.EndtDate,
+                        d.Discount,
+                        d.AverageRating,
+                        d.Cost,
+                        d.AvilableNumber,
+                        images = d.destinationImages.Select(i => new
+                        {
+                          i.ImageId,
+                          i.ImageData
+                           
+                        })
+                    })
+                    .OrderByDescending(d => d.AverageRating)
+                    .ToListAsync();
+            
+                if (destinations == null || destinations.Count == 0)
+                    return NotFound($"No destinations found under category: {category}");
+            
+                return Ok(destinations);
+            }
+         #endregion
 
 
         #region Get DestinationByOwnerId
 
            [HttpGet("GetDestinationsWithImagesAddByOwner")]
-            [Authorize(Policy = "OwnerOnly")]
+            [Authorize]
             public async Task<IActionResult> GetDestinationsWithImagesAddByOwner()
             {
                 var currentOwnerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
