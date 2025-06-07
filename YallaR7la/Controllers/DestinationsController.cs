@@ -21,28 +21,32 @@ namespace YallaR7la.Controllers
         }
 
         #region Get All Destinations 
-        [HttpGet("GetAllDestinations")]
-        public async Task<IActionResult> GetAllDestinations()
+       [HttpGet("GetAllDestinations")]
+public async Task<IActionResult> GetAllDestinations()
+{
+    var destinations = await _appDbContext.Destinations
+        .Where(d => d.IsAvelable == true).Include(d => d.destinationImages)
+        .Select(d => new
         {
-            var destinations = await _appDbContext.Destinations
-                .Where(d => d.IsAvelable == true)..Include(img => img.destinationImages)
-                .Select(d => new
-                {
-                    d.DestinationId,
-                    d.Name,
-                    d.Category,
-                    d.Description,
-                    d.AverageRating,
-                    images = d.destinationImages.Select(i => new {
+            d.DestinationId,
+            d.Name,
+            d.Description,
+            d.Category,
+            d.AverageRating,
+            d.Location,
+            d.Discount,
+            d.Cost,
+            images = d.destinationImages.Select(i => new
+            {
                 i.ImageId,
                 i.ImageData
-                })
-                })
-                .OrderByDescending(d => d.AverageRating)
-                .ToListAsync();
+            })
+        })
+        .OrderByDescending(d => d.AverageRating)
+        .ToListAsync();
 
-            return Ok(destinations);
-        }
+    return Ok(destinations);
+}
 
         #endregion
 
@@ -99,37 +103,39 @@ namespace YallaR7la.Controllers
 
         #region Get By Category
 
-        [HttpGet("GetByCategory")]
-        public async Task<IActionResult> GetDestinationsByCategory([FromQuery] string category)
+       [HttpGet("GetByCategory")]
+public async Task<IActionResult> GetDestinationsByCategory([FromQuery] string category)
+{
+    if (string.IsNullOrWhiteSpace(category))
+        return BadRequest("Category is required.");
+
+    var destinations = await _appDbContext.Destinations
+        .Where(d => d.Category.ToLower() == category.ToLower() && d.IsAvelable == true).Include(img => img.destinationImages)
+        .Select(d => new
         {
-            if (string.IsNullOrWhiteSpace(category))
-                return BadRequest("Category is required.");
+            d.DestinationId,
+            d.Name,
+            d.Description,
+            d.Category,
+            d.AverageRating,
+            d.Location,
+            d.Discount,
+            d.Cost,
+            images = d.destinationImages.Select(i => new {
+            i.ImageId,
+            i.ImageData
+            })
 
-            var destinations = await _appDbContext.Destinations
-                .Where(d => d.Category.ToLower() == category.ToLower() && d.IsAvelable == true).Include(img => img.destinationImages)
-                .Select(d => new
-                {
-                    d.DestinationId,
-                    d.Name,
-                    d.Description,
-                    d.Category,
-                    d.AverageRating,
-                    d.Location,
-                    d.Discount,
-                    d.Cost,
-                    images = d.destinationImages.Select(i => new {
-                    i.ImageId,
-                    i.ImageData
-                    })
-                    })
-                .OrderByDescending(d => d.AverageRating)
-                .ToListAsync();
+        })
+        .OrderByDescending(d => d.AverageRating)
+        .ToListAsync();
 
-            if (destinations == null || destinations.Count == 0)
-                return NotFound($"No destinations found under category: {category}");
+    if (destinations == null || destinations.Count == 0)
+        return NotFound($"No destinations found under category: {category}");
 
-            return Ok(destinations);
-        }
+    return Ok(destinations);
+}
+
 
 
         #endregion
