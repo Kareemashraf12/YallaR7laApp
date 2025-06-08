@@ -39,7 +39,6 @@ public async Task<IActionResult> GetAllDestinations()
             images = d.destinationImages.Select(i => new
             {
                 i.ImageId,
-                i.ImageData
             })
         })
         .OrderByDescending(d => d.AverageRating)
@@ -49,7 +48,19 @@ public async Task<IActionResult> GetAllDestinations()
 }
 
         #endregion
+        #region  GetImage
 
+            [HttpGet("GetImage/{id}")]
+            public async Task<IActionResult> GetImage(int id)
+            {
+                var image = await _appDbContext.DestinationImages.FindAsync(id);
+                if (image == null)
+                    return NotFound();
+            
+                return File(image.ImageData, "image/jpeg"); // or "image/png"
+            }
+
+        #endregion
 
         #region Get Destination Details
 
@@ -79,7 +90,7 @@ public async Task<IActionResult> GetAllDestinations()
                     Images = d.destinationImages.Select(i => new
                     {
                         i.ImageId,
-                        ImageBase64 = i.ImageData != null ? Convert.ToBase64String(i.ImageData) : null
+                        i.ImageData 
                     }),
                     Comments = d.Feedbacks.Select(c => new
                     {
