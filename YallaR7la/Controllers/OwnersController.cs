@@ -73,9 +73,24 @@ namespace YallaR7la.Controllers
 
         #endregion
 
+        #region GetImage
+        
+        [HttpGet("GetImage/{id}")]
+        public async Task<IActionResult> GetImage(int id)
+        {
+            var image = await _appDbContext.DestinationImages.FindAsync(id);
+            if (image == null)
+                return NotFound();
+        
+            return File(image.ImageData, "image/jpeg"); // or "image/png"
+        }
+        
+        #endregion 
+
+
+
+
          #region GetDestinationsForOwnerByCategory
-
-
 
             [HttpGet("GetDestinationsForOwnerByCategory")]
             [Authorize]
@@ -105,8 +120,6 @@ namespace YallaR7la.Controllers
                         images = d.destinationImages.Select(i => new
                         {
                           i.ImageId,
-                          i.ImageData
-                           
                         })
                     })
                     .OrderByDescending(d => d.AverageRating)
@@ -156,7 +169,7 @@ namespace YallaR7la.Controllers
                     Images = dest.destinationImages.Select(img => new
                     {
                         img.ImageId,
-                        img.ImageData //  return image data
+                       
                     })
                 });
             
