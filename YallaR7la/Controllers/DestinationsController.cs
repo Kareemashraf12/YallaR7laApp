@@ -90,7 +90,7 @@ public async Task<IActionResult> GetAllDestinations()
                     Images = d.destinationImages.Select(i => new
                     {
                         i.ImageId,
-                        i.ImageData 
+                        
                     }),
                     Comments = d.Feedbacks.Select(c => new
                     {
@@ -134,7 +134,7 @@ public async Task<IActionResult> GetDestinationsByCategory([FromQuery] string ca
             d.Cost,
             images = d.destinationImages.Select(i => new {
             i.ImageId,
-            i.ImageData
+            
             })
 
         })
