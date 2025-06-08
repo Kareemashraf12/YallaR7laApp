@@ -170,7 +170,7 @@ namespace YallaR7la.Controllers
                     Images = dest.destinationImages.Select(img => new
                     {
                         img.ImageId,
-                       
+                        img.ImageData
                     })
                 });
             
