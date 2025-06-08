@@ -51,7 +51,7 @@ public async Task<IActionResult> GetAllDestinations()
         #region  GetImage
 
             [HttpGet("GetImage/{id}")]
-            public async Task<IActionResult> GetImage(int id)
+            public async Task<IActionResult> GetImage(string id)
             {
                 var image = await _appDbContext.DestinationImages.FindAsync(id);
                 if (image == null)
