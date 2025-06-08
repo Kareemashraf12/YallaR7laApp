@@ -82,7 +82,7 @@ namespace YallaR7la.Controllers
             if (image == null)
                 return NotFound();
         
-            return File(image.ImageData, "image/jpeg"); // or "image/png"
+            return Ok(image.ImageData); // or "image/png"
         }
         
         #endregion 
@@ -120,6 +120,7 @@ namespace YallaR7la.Controllers
                         images = d.destinationImages.Select(i => new
                         {
                           i.ImageId,
+                          i.ImageData
                         })
                     })
                     .OrderByDescending(d => d.AverageRating)
