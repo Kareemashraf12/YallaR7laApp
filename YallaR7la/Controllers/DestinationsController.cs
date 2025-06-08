@@ -22,45 +22,54 @@ namespace YallaR7la.Controllers
 
         #region Get All Destinations 
        [HttpGet("GetAllDestinations")]
-public async Task<IActionResult> GetAllDestinations()
-{
-    var destinations = await _appDbContext.Destinations
-        .Where(d => d.IsAvelable == true).Include(d => d.destinationImages)
-        .Select(d => new
+        public async Task<IActionResult> GetAllDestinations([FromQuery] int pageNumber = 1)
         {
-            d.DestinationId,
-            d.Name,
-            d.Description,
-            d.Category,
-            d.AverageRating,
-            d.Location,
-            d.Discount,
-            d.Cost,
-            images = d.destinationImages.Select(i => new
+            const int pageSize = 6;
+        
+            if (pageNumber <= 0)
+                return BadRequest("Page number must be greater than zero.");
+        
+            var query = _appDbContext.Destinations
+                .Where(d => d.IsAvelable == true)
+                .Include(d => d.destinationImages)
+                .OrderByDescending(d => d.AverageRating);
+        
+            var totalRecords = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
+        
+            var pagedDestinations = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(d => new
+                {
+                    d.DestinationId,
+                    d.Name,
+                    d.Description,
+                    d.Category,
+                    d.AverageRating,
+                    d.Location,
+                    d.Discount,
+                    d.Cost,
+                    Images = d.destinationImages.Select(i => new
+                    {
+                        i.ImageId,
+                        ImageData = Convert.ToBase64String(i.ImageData)
+                    })
+                })
+                .ToListAsync();
+        
+            return Ok(new
             {
-                i.ImageId,
-            })
-        })
-        .OrderByDescending(d => d.AverageRating)
-        .ToListAsync();
-
-    return Ok(destinations);
-}
+                TotalRecords = totalRecords,
+                TotalPages = totalPages,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                Data = pagedDestinations
+            });
+        }
 
         #endregion
-        #region  GetImage
-
-            [HttpGet("GetImage/{id}")]
-            public async Task<IActionResult> GetImage(string id)
-            {
-                var image = await _appDbContext.DestinationImages.FindAsync(id);
-                if (image == null)
-                    return NotFound();
-            
-                return Ok(image.ImageData); // or "image/png"
-            }
-
-        #endregion
+        
 
         #region Get Destination Details
 
